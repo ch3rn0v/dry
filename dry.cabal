@@ -1,0 +1,61 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 513fc13c47cb0f87f23c534c677744b622d4a50f2344bb3cc110f7a1fb1f4ded
+
+name:           dry
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/ch3rn0v/dry#readme>
+homepage:       https://github.com/ch3rn0v/dry#readme
+bug-reports:    https://github.com/ch3rn0v/dry/issues
+author:         Ilya Chernov
+maintainer:      ilya.v.chernov@gmail.com
+copyright:      2019 Ilya Chernov
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/ch3rn0v/dry
+
+library
+  exposed-modules:
+      Lib
+  other-modules:
+      Paths_dry
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+  default-language: Haskell2010
+
+executable dry-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_dry
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , dry
+  default-language: Haskell2010
+
+test-suite dry-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_dry
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , dry
+  default-language: Haskell2010
