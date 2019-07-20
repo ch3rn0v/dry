@@ -7,4 +7,6 @@ import           Data.List
 main :: IO ()
 main = do
     args <- getArgs
-    analyseSourceCode $ head args
+    let path = head args
+        dirsToSkip = tail args
+    analyseSourceCode path dirsToSkip

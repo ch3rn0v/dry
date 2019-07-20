@@ -3,6 +3,7 @@ module Lib
     )
 where
 
+import           Data.List                      ( isInfixOf )
 import           Path                           ( parseAbsDir
                                                 , fromAbsFile
                                                 )
@@ -19,21 +20,33 @@ printDirectoryContents path files =
         ++ "\nFiles:\n"
         ++ concatMap decoratePathName files
 
-filterSourceCodeFiles :: String -> [FilePath] -> [FilePath]
-filterSourceCodeFiles ext = filter
-    (\f -> length f > length ext && ext == drop (length f - length ext) f)
+dirsAbsentInPath :: FilePath -> [String] -> Bool
+dirsAbsentInPath path =
+    foldl (\dirsAbsent dir -> dirsAbsent && not (dir `isInfixOf` path)) True
 
-analyseSourceCode :: FilePath -> IO ()
-analyseSourceCode path = do
+filterSourceCodeFiles :: String -> [String] -> [FilePath] -> [FilePath]
+filterSourceCodeFiles ext dirsToSkip = filter
+    (\f ->
+        length f
+            >  length ext
+            && ext
+            == drop (length f - length ext) f
+            && dirsAbsentInPath f dirsToSkip
+    )
+
+analyseSourceCode :: FilePath -> [String] -> IO ()
+analyseSourceCode path dirsToSkip = do
     dir     <- parseAbsDir path
     (_, fs) <- listDirRecur dir
-    let ext             = ".js"
-        sourceCodeFiles = filterSourceCodeFiles ext $ map fromAbsFile fs
+    let ext = ".js"
+        sourceCodeFiles =
+            filterSourceCodeFiles ext dirsToSkip $ map fromAbsFile fs
     printDirectoryContents path sourceCodeFiles
 
+
 {-
-    TODO:
-    - Skip ignored directories
+    TODO:    
     - Read files' contents
+    - Parse files' contents (preferably keeping track of the paths)
 
 -}
