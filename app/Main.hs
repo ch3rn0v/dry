@@ -7,4 +7,4 @@ import           Data.List
 main :: IO ()
 main = do
     args <- getArgs
-    analyseSourceCode $ getDirectoryPath args
+    analyseSourceCode $ head args

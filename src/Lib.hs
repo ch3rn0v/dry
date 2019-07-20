@@ -1,37 +1,39 @@
 module Lib
-    ( getDirectoryPath
-    , analyseSourceCode
+    ( analyseSourceCode
     )
 where
 
-import System.Directory
-import Data.List (sort)
+import           Path                           ( parseAbsDir
+                                                , fromAbsFile
+                                                )
+import           Path.IO                        ( listDirRecur )
 
-getDirectoryPath :: [String] -> String
-getDirectoryPath [] =
-    error
-        "ERROR:\nThe path to the source code directory was not provided.\
-        \ Please provide it as the first argument.\n"
-getDirectoryPath (path:_) = path
+decoratePathName :: FilePath -> String
+decoratePathName fn = "- " ++ fn ++ "\n"
 
-decorateFilename :: String -> String
-decorateFilename fn = "- " ++ fn ++ "\n"
-
-printDirectoryContents :: String -> [String] -> IO ()
-printDirectoryContents path s =
-    putStrLn $ "\nListing Contents of the Directory\n`"
+printDirectoryContents :: FilePath -> [FilePath] -> IO ()
+printDirectoryContents path files =
+    putStrLn
+        $  "\nDirectory: `"
         ++ path
-        ++ "`:\n"
-        ++ concatMap decorateFilename (reverse s)
+        ++ "\nFiles:\n"
+        ++ concatMap decoratePathName files
 
-analyseSourceCode :: String -> IO ()
-analyseSourceCode path =
-    listDirectory path >>= printDirectoryContents path
+filterSourceCodeFiles :: String -> [FilePath] -> [FilePath]
+filterSourceCodeFiles ext = filter
+    (\f -> length f > length ext && ext == drop (length f - length ext) f)
+
+analyseSourceCode :: FilePath -> IO ()
+analyseSourceCode path = do
+    dir     <- parseAbsDir path
+    (_, fs) <- listDirRecur dir
+    let ext             = ".js"
+        sourceCodeFiles = filterSourceCodeFiles ext $ map fromAbsFile fs
+    printDirectoryContents path sourceCodeFiles
 
 {-
     TODO:
-    - Traverse directories recursively
     - Skip ignored directories
-    - Build a list of paths to all the source code files
-      that were met during traversal
+    - Read files' contents
+
 -}

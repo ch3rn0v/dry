@@ -21,6 +21,8 @@ description: Please see the README on GitHub at <https://github.com/ch3rn0v/dry#
 dependencies:
   - base >= 4.7 && < 5
   - directory
+  - path
+  - path-io
 
 library:
   source-dirs: src
