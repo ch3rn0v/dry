@@ -23,6 +23,7 @@ dependencies:
   - directory
   - path
   - path-io
+  - language-javascript >= 0.6
 
 library:
   source-dirs: src

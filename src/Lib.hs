@@ -11,11 +11,8 @@ import           Path                           ( parseAbsDir
                                                 , fromAbsFile
                                                 )
 import           Path.IO                        ( listDirRecur )
-
-
-printFilesContent :: [(FilePath, String)] -> IO ()
-printFilesContent = traverse_
-    $ \(fp, fc) -> putStrLn $ "File: `" ++ fp ++ "`\nContents:\n" ++ fc
+import           Language.JavaScript.Parser     ( parseModule )
+import           Language.JavaScript.Parser.AST ( JSAST )
 
 dirsAbsentInPath :: FilePath -> [String] -> Bool
 dirsAbsentInPath path =
@@ -31,6 +28,14 @@ filterSourceCodeFiles ext dirsToSkip = filter
             && dirsAbsentInPath f dirsToSkip
     )
 
+printAST :: Either String JSAST -> String
+printAST (Left  _  ) = "ERROR: Parsing failed"
+printAST (Right ast) = show ast
+
+printFilesContent :: [(FilePath, Either String JSAST)] -> IO ()
+printFilesContent = traverse_ $ \(fp, fAST) ->
+    putStrLn $ "File: `" ++ fp ++ "`\nAST:\n" ++ printAST fAST
+
 analyseSourceCode :: FilePath -> [String] -> IO ()
 analyseSourceCode path dirsToSkip = do
     dir     <- parseAbsDir path
@@ -39,10 +44,11 @@ analyseSourceCode path dirsToSkip = do
         sourceCodeFiles =
             filterSourceCodeFiles ext dirsToSkip $ map fromAbsFile fs
     filesContents <- mapM readFile sourceCodeFiles
-    printFilesContent $ zip sourceCodeFiles filesContents
+    let jsASTs = zipWith parseModule filesContents sourceCodeFiles
+    printFilesContent $ zip sourceCodeFiles jsASTs
 
 {-
     TODO:
-    - Parse files' contents (preferably keeping track of the paths)
+    - Process AST to find similar functions
 
 -}

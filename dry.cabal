@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ea29c782db31f10385cf86bbbf07dab12b2ea0872c567c7bd8f60803af184cd2
+-- hash: 2285431720388edfb2e8226ae82b1c04afd754496fa87e5e25f7953c016232be
 
 name:           dry
 version:        0.1.0.0
@@ -34,6 +34,7 @@ library
   build-depends:
       base >=4.7 && <5
     , directory
+    , language-javascript >=0.6
     , path
     , path-io
   default-language: Haskell2010
@@ -49,6 +50,7 @@ executable dry-exe
       base >=4.7 && <5
     , directory
     , dry
+    , language-javascript >=0.6
     , path
     , path-io
   default-language: Haskell2010
@@ -65,6 +67,7 @@ test-suite dry-test
       base >=4.7 && <5
     , directory
     , dry
+    , language-javascript >=0.6
     , path
     , path-io
   default-language: Haskell2010
