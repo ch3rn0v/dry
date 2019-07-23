@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7ad71bad04c7a6266bd2c419819afa198cf42852a0abd03740d2c660b29d0c9c
+-- hash: 00c88448254de7e5e8d9948e6734219b6cb10253d152dbf6ea6c351d673f4156
 
 name:           dry
 version:        0.1.0.0
@@ -26,6 +26,7 @@ source-repository head
 
 library
   exposed-modules:
+      FileProcessing
       Helpers
       Lib
   other-modules:

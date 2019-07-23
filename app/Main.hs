@@ -1,8 +1,7 @@
 module Main where
 
-import           Lib
-import           System.Environment
-import           Data.List
+import           Lib                            ( analyseSourceCode )
+import           System.Environment             ( getArgs )
 
 main :: IO ()
 main = do
@@ -14,5 +13,6 @@ main = do
                 \ Please provide it as the first argument.\n"
         else
             let path       = head args
+                ext        = ".js"
                 dirsToSkip = tail args
-            in  analyseSourceCode path dirsToSkip
+            in  analyseSourceCode path ext dirsToSkip
