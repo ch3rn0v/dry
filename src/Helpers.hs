@@ -4,6 +4,5 @@ module Helpers where
 -- | starting with `f xs`, where `f` is the head of the list of functions and xs is
 -- | the initial value of the argument.
 mapListOfFunctions :: [[a] -> [a]] -> [a] -> [a]
-mapListOfFunctions []       xs = xs
-mapListOfFunctions [f     ] xs = f xs
-mapListOfFunctions (f : fs) xs = mapListOfFunctions fs $ f xs
+mapListOfFunctions []       = id
+mapListOfFunctions (f : fs) = mapListOfFunctions fs . f
