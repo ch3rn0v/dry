@@ -1,5 +1,5 @@
-module FileProcessing
-    ( getFilesContents
+module FileProcessor
+    ( readSourceFiles
     )
 where
 
@@ -14,6 +14,7 @@ import           Path                           ( parseAbsDir
                                                 )
 import           Path.IO                        ( listDirRecur )
 import           Helpers                        ( mapListOfFunctions )
+import           Analyser                       ( SourceFile(SourceFile) )
 
 -- | Keep only the files whose path ends in the given extension `ext`.
 filterFilesByExt :: String -> [FilePath] -> [FilePath]
@@ -37,15 +38,19 @@ filterFilesByDir dirsToSkip = filter (`dirsAbsentInPath` dirsToSkip)
 filterSourceCodeFiles :: [[FilePath] -> [FilePath]] -> [FilePath] -> [FilePath]
 filterSourceCodeFiles = mapListOfFunctions
 
+-- | Read a file given its path, return its contents along with its path.
+readSourceFile :: FilePath -> IO SourceFile
+readSourceFile filePath = SourceFile filePath <$> readFile filePath
+
 -- | Recursively traverse every directory within `path`, except `dirsToSkip`,
 -- | reading every file's contents as long as its extention is the same as `ext`.
-getFilesContents :: String -> String -> [String] -> IO [String]
-getFilesContents path ext dirsToSkip = do
+readSourceFiles :: String -> String -> [String] -> IO [SourceFile]
+readSourceFiles path ext dirsToSkip = do
     dir     <- parseAbsDir path
     (_, fs) <- listDirRecur dir
     let extFilterFn = filterFilesByExt ext
         dirFilterFn = filterFilesByDir dirsToSkip
-        sourceCodeFiles =
+        sourceCodeFilePaths =
             filterSourceCodeFiles [extFilterFn, dirFilterFn]
                 $ map fromAbsFile fs
-    mapM readFile sourceCodeFiles
+    mapM readSourceFile sourceCodeFilePaths
