@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6ef08b078964b9b933dd6e53bddc11926f66b363cf1086ad39048a53019eea2d
+-- hash: f889399d36b1430f9f44e6c52e8e09c7f1e913d855390d53b92ba8afcb1adbe2
 
 name:           dry
 version:        0.1.0.0
@@ -26,9 +26,9 @@ source-repository head
 
 library
   exposed-modules:
-      Analyser
       FileProcessor
       Helpers
+      JSASTProcessor
       Lib
   other-modules:
       Paths_dry
@@ -37,8 +37,10 @@ library
   build-depends:
       base >=4.7 && <5
     , directory
+    , language-javascript
     , path
     , path-io
+    , uniplate
   default-language: Haskell2010
 
 executable dry-exe
@@ -52,8 +54,10 @@ executable dry-exe
       base >=4.7 && <5
     , directory
     , dry
+    , language-javascript
     , path
     , path-io
+    , uniplate
   default-language: Haskell2010
 
 test-suite dry-test
@@ -68,6 +72,8 @@ test-suite dry-test
       base >=4.7 && <5
     , directory
     , dry
+    , language-javascript
     , path
     , path-io
+    , uniplate
   default-language: Haskell2010

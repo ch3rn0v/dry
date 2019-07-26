@@ -14,7 +14,7 @@ import           Path                           ( parseAbsDir
                                                 )
 import           Path.IO                        ( listDirRecur )
 import           Helpers                        ( mapListOfFunctions )
-import           Analyser                       ( SourceFile(SourceFile) )
+import           JSASTProcessor                 ( RawSourceFile(RawSourceFile) )
 
 -- | Keep only the files whose path ends in the given extension `ext`.
 filterFilesByExt :: String -> [FilePath] -> [FilePath]
@@ -39,12 +39,12 @@ filterSourceCodeFiles :: [[FilePath] -> [FilePath]] -> [FilePath] -> [FilePath]
 filterSourceCodeFiles = mapListOfFunctions
 
 -- | Read a file given its path, return its contents along with its path.
-readSourceFile :: FilePath -> IO SourceFile
-readSourceFile filePath = SourceFile filePath <$> readFile filePath
+readSourceFile :: FilePath -> IO RawSourceFile
+readSourceFile filePath = RawSourceFile filePath <$> readFile filePath
 
 -- | Recursively traverse every directory within `path`, except `dirsToSkip`,
 -- | reading every file's contents as long as its extention is the same as `ext`.
-readSourceFiles :: String -> String -> [String] -> IO [SourceFile]
+readSourceFiles :: String -> String -> [String] -> IO [RawSourceFile]
 readSourceFiles path ext dirsToSkip = do
     dir     <- parseAbsDir path
     (_, fs) <- listDirRecur dir

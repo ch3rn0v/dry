@@ -23,6 +23,8 @@ dependencies:
   - directory
   - path
   - path-io
+  - uniplate
+  - language-javascript
 
 library:
   source-dirs: src

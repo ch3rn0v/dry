@@ -4,16 +4,17 @@ module Lib
 where
 
 import           FileProcessor                  ( readSourceFiles )
+import           JSASTProcessor                 ( parseRawSourceFiles )
 
 analyseSourceCode :: FilePath -> String -> [String] -> IO ()
 analyseSourceCode path ext dirsToSkip = do
-    filesContents <- readSourceFiles path ext dirsToSkip
-    print filesContents
+    rawSourceFiles <- readSourceFiles path ext dirsToSkip
+    let parsedSourceFiles = parseRawSourceFiles rawSourceFiles
+    print parsedSourceFiles
 
 {-
     TODO:
-    - Consider parsing and analysing syntactic-level data instead of AST.
-      Such as the number of arguments, return values (or lack thereof), potential
-      side effects, the identifiers of others functions being called.
+    - add Analyser module with a FunctionData -> FunctionVectorData function
+    - devise a metric to compare function vectors (consider cosine similarity, or k-NN)
 
 -}
