@@ -6,3 +6,9 @@ module Helpers where
 mapListOfFunctions :: [[a] -> [a]] -> [a] -> [a]
 mapListOfFunctions []       = id
 mapListOfFunctions (f : fs) = mapListOfFunctions fs . f
+
+-- | Calculates and returns cartesian product
+-- | for all the given list's elements,
+-- | with no pairs of same elements.
+cartesiadProductUnique :: Eq a => [a] -> [(a, a)]
+cartesiadProductUnique xs = [ (a1, a2) | a1 <- xs, a2 <- xs, a1 /= a2 ]

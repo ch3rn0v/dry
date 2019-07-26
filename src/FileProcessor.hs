@@ -26,6 +26,8 @@ filterFilesByExt ext = filter
             == drop (length fName - length ext) fName
     )
 
+-- | Given file's path and a list of strings, returns False
+-- | if at least one of the strings occurs within the path.
 dirsAbsentInPath :: FilePath -> [String] -> Bool
 dirsAbsentInPath path =
     foldl' (\dirsAbsent dir -> dirsAbsent && not (dir `isInfixOf` path)) True

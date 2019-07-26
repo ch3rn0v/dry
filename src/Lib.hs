@@ -5,12 +5,14 @@ where
 
 import           FileProcessor                  ( readSourceFiles )
 import           JSASTProcessor                 ( parseRawSourceFiles )
+import           Analyser                       ( analyseParsedSourceFiles )
 
 analyseSourceCode :: FilePath -> String -> [String] -> IO ()
 analyseSourceCode path ext dirsToSkip = do
     rawSourceFiles <- readSourceFiles path ext dirsToSkip
     let parsedSourceFiles = parseRawSourceFiles rawSourceFiles
-    print parsedSourceFiles
+        analysisResults   = analyseParsedSourceFiles parsedSourceFiles
+    print analysisResults
 
 {-
     TODO:

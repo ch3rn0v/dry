@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
 module JSASTProcessor
-    ( RawSourceFile(..)
+    ( RawSourceFile(RawSourceFile)
     , RawSourceCode
-    , FunctionData(..)
+    , FunctionData(FunctionData)
     , parseRawSourceFiles
     )
 where
@@ -40,18 +40,23 @@ import           Data.Generics.Uniplate.DataOnly
                                                 )
 
 type RawSourceCode = String
-data RawSourceFile = RawSourceFile { filePath :: FilePath
-                                   , rawSourceCode :: RawSourceCode
-                                   } deriving Show
+data RawSourceFile = RawSourceFile FilePath RawSourceCode deriving Show
 
 type FunctionName = String
 type Arity = Int
 type IsPure = Bool
 type IsReturnExplicit = Bool
 
-data FunctionData = FunctionData FunctionName Arity IsPure IsReturnExplicit [JSStatement] RawSourceCode deriving Show
+data FunctionData = FunctionData FilePath FunctionName Arity IsPure IsReturnExplicit [JSStatement] RawSourceCode
 
-data ParsedSourceFile = ParsedSourceFile FilePath [FunctionData] deriving (Show)
+instance Eq FunctionData where
+    (==) (FunctionData filePath1 fIdent1 _ _ _ _ sc1) (FunctionData filePath2 fIdent2 _ _ _ _ sc2)
+        = filePath1 == filePath2
+        && fIdent1 == fIdent2
+        && sc1 == sc2
+
+instance Show FunctionData where
+    show (FunctionData filePath fIdent _ _ _ _ _) = "Function `" ++ fIdent ++ "` (" ++ filePath ++ ")\n"
 
 getJSIdent :: JSIdent -> String
 getJSIdent (JSIdentName _ s) = s
@@ -85,8 +90,8 @@ extractFnParts (Stmt (JSFunction _ fIdent _ argsList _ fBlock _)) =
 extractFnParts (Expr (JSFunctionExpression _ fIdent _ argsList _ fBlock)) =
     (getJSIdent fIdent, length (universe argsList), fBlock)
 
-jsFunctionToFunctionData :: JSASTFn -> FunctionData
-jsFunctionToFunctionData jsf =
+jsFunctionToFunctionData :: FilePath -> JSASTFn -> FunctionData
+jsFunctionToFunctionData filePath jsf =
     let
         rawFunctionSourceCode   = extractFnSourceCode jsf
         (fIdent, arity, fBlock) = extractFnParts jsf
@@ -105,6 +110,7 @@ jsFunctionToFunctionData jsf =
         statements = getJSBlockStatemtns fBlock
     in
         FunctionData
+            filePath
             fIdent
             arity
             (isPure callExprs callExprsDot callExprsSqr callMethods)
@@ -115,21 +121,21 @@ jsStmtFunctionToFunctionData _ =
     error
         "Only `JSFunction` and `JSFunctionExpression` data constructors are supported"
 
-parseRawSourceFile :: RawSourceFile -> ParsedSourceFile
+parseRawSourceFile :: RawSourceFile -> [FunctionData]
 parseRawSourceFile (RawSourceFile path sourceCode) =
     let
-        jsAST = parseModule sourceCode path
+        parseJSFn = jsFunctionToFunctionData path
+        jsAST     = parseModule sourceCode path
         jsFunctions =
             [ jsStatements | jsStatements@JSFunction{} <- universeBi jsAST ]
         jsFunctionsInExpr =
             [ jsStatements
             | jsStatements@JSFunctionExpression{} <- universeBi jsAST
             ]
-        parsedJSFunctions = map (jsFunctionToFunctionData . Stmt) jsFunctions
-        parsedJSFunctionsInExpr =
-            map (jsFunctionToFunctionData . Expr) jsFunctionsInExpr
+        parsedJSFunctions       = map (parseJSFn . Stmt) jsFunctions
+        parsedJSFunctionsInExpr = map (parseJSFn . Expr) jsFunctionsInExpr
     in
-        ParsedSourceFile path (parsedJSFunctions ++ parsedJSFunctionsInExpr)
+        (parsedJSFunctions ++ parsedJSFunctionsInExpr)
 
-parseRawSourceFiles :: [RawSourceFile] -> [ParsedSourceFile]
-parseRawSourceFiles = map parseRawSourceFile
+parseRawSourceFiles :: [RawSourceFile] -> [FunctionData]
+parseRawSourceFiles = concatMap parseRawSourceFile

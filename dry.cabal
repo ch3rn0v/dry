@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f889399d36b1430f9f44e6c52e8e09c7f1e913d855390d53b92ba8afcb1adbe2
+-- hash: d34a987f0c018a8412870e6a5f6913cdcaaf9a67042f5a1ee35e42a5f035f468
 
 name:           dry
 version:        0.1.0.0
@@ -26,6 +26,7 @@ source-repository head
 
 library
   exposed-modules:
+      Analyser
       FileProcessor
       Helpers
       JSASTProcessor
