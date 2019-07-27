@@ -4,6 +4,11 @@ module JSASTProcessor
     ( RawSourceFile(RawSourceFile)
     , RawSourceCode
     , FunctionData(FunctionData)
+    , fName
+    , arity
+    , purity
+    , explicitReturn
+    , stmts
     , parseRawSourceFiles
     )
 where
@@ -47,16 +52,21 @@ type Arity = Int
 type IsPure = Bool
 type IsReturnExplicit = Bool
 
-data FunctionData = FunctionData FilePath FunctionName Arity IsPure IsReturnExplicit [JSStatement] RawSourceCode
+data FunctionData = FunctionData { filePath :: FilePath
+                                 , fName :: FunctionName
+                                 , arity :: Arity
+                                 , purity :: IsPure
+                                 , explicitReturn :: IsReturnExplicit
+                                 , stmts :: [JSStatement]
+                                 , rawSourceCode :: RawSourceCode }
 
 instance Eq FunctionData where
     (==) (FunctionData filePath1 fIdent1 _ _ _ _ sc1) (FunctionData filePath2 fIdent2 _ _ _ _ sc2)
-        = filePath1 == filePath2
-        && fIdent1 == fIdent2
-        && sc1 == sc2
+        = filePath1 == filePath2 && fIdent1 == fIdent2 && sc1 == sc2
 
 instance Show FunctionData where
-    show (FunctionData filePath fIdent _ _ _ _ _) = "Function `" ++ fIdent ++ "` (" ++ filePath ++ ")\n"
+    show (FunctionData filePath fIdent _ _ _ _ _) =
+        "Function `" ++ fIdent ++ "` (" ++ filePath ++ ")\n"
 
 getJSIdent :: JSIdent -> String
 getJSIdent (JSIdentName _ s) = s

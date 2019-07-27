@@ -25,6 +25,8 @@ dependencies:
   - path-io
   - uniplate
   - language-javascript
+  - extra
+  - edit-distance
 
 library:
   source-dirs: src

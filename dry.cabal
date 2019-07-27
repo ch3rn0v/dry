@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d34a987f0c018a8412870e6a5f6913cdcaaf9a67042f5a1ee35e42a5f035f468
+-- hash: ca153a7580c419492fcee27a48ab13de48636ea201786031c74c5437324dcb2f
 
 name:           dry
 version:        0.1.0.0
@@ -38,6 +38,8 @@ library
   build-depends:
       base >=4.7 && <5
     , directory
+    , edit-distance
+    , extra
     , language-javascript
     , path
     , path-io
@@ -55,6 +57,8 @@ executable dry-exe
       base >=4.7 && <5
     , directory
     , dry
+    , edit-distance
+    , extra
     , language-javascript
     , path
     , path-io
@@ -73,6 +77,8 @@ test-suite dry-test
       base >=4.7 && <5
     , directory
     , dry
+    , edit-distance
+    , extra
     , language-javascript
     , path
     , path-io
