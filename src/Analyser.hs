@@ -1,5 +1,6 @@
 module Analyser
     ( analyseParsedSourceFiles
+    , FunctionPairCompoundSimilarity
     )
 where
 

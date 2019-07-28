@@ -6,13 +6,19 @@ import           System.Environment             ( getArgs )
 main :: IO ()
 main = do
     args <- getArgs
-    if null args
+    if length args < 2
         then
             error
-                "\n\nERROR:\nThe path to the source code directory was not provided.\
-                \ Please provide it as the first argument.\n"
+                "\n\nERROR:\nThe path to the source code directory or the path to\
+                \ the output file was not provided. Please provide it as the first argument.\n"
         else
-            let path       = head args
-                ext        = ".js"
-                dirsToSkip = tail args
-            in  analyseSourceCode path ext dirsToSkip
+            let pathToRead  = head args
+                pathToWrite = args !! 1
+                dirsToSkip  = drop 2 args
+                ext         = ".js"
+            in  do
+                    analysedSourceCode <- analyseSourceCode pathToRead
+                                                            ext
+                                                            dirsToSkip
+                    writeFile pathToWrite (show analysedSourceCode)
+                    print "Done."
