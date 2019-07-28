@@ -3,6 +3,8 @@
 This tool helps you abstract away common or repeated chunks of code by finding similar pieces.
 It will allow you to avoid repeating yourself with less effort on your side.
 
+It only works with ES5 for now.
+
 # How To Build
 
 1. `git clone https://github.com/ch3rn0v/dry.git`
