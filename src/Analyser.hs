@@ -38,10 +38,6 @@ data FunctionPairRawSimilarity = FunctionPairRawSimilarity { f1 :: FunctionData
                                                            , stmtsLenDiff :: Double }
 data FunctionPairCompoundSimilarity = FunctionPairCompoundSimilarity FunctionData FunctionData Double
 
-instance Show FunctionPairCompoundSimilarity where
-    show (FunctionPairCompoundSimilarity f1 f2 sim) =
-        show f1 ++ " ; " ++ show f2 ++ " : " ++ show sim ++ "\n"
-
 instance Eq FunctionPairCompoundSimilarity where
     (==) (FunctionPairCompoundSimilarity _ _ s1) (FunctionPairCompoundSimilarity _ _ s2)
         = s1 == s2

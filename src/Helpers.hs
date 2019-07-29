@@ -13,7 +13,7 @@ mapListOfFunctions (f : fs) = mapListOfFunctions fs . f
 -- | Calculates and returns cartesian product
 -- | for all the given list's elements,
 -- | with no pairs of same elements.
-cartesianProductUnique :: Eq a => [a] -> [(a, a)]
+cartesianProductUnique :: [a] -> [(a, a)]
 cartesianProductUnique [] = []
 cartesianProductUnique (x:xs) = map ((,) x) xs ++ cartesianProductUnique xs
 
