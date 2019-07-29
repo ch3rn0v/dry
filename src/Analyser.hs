@@ -118,7 +118,7 @@ scaleDiffValue = minMaxScaling 0
 
 -- | Calculates compound diff value given the raw diff values.
 aggregateNormalizedDiffs :: [Double] -> Double
-aggregateNormalizedDiffs = avgDoubles
+aggregateNormalizedDiffs nDiffs = 1 - avgDoubles nDiffs
 
 -- | Aggregates raw similarity values of a functions pair into single compound similarity value.
 calculateFunctionPairCompoundSimilarity
@@ -145,10 +145,11 @@ calculateFunctionPairCompoundSimilarity fprss =
 -- | Converts a list of FunctionPairCompoundSimilarity into a single String, ready
 -- | to be written as a csv file  (`,` as a column delimiter, `\n` as a row delimiter).
 functionPairSimilarityDataToCsv :: [FunctionPairCompoundSimilarity] -> CSV
-functionPairSimilarityDataToCsv = foldl'
-    (\csv (FunctionPairCompoundSimilarity f1 f2 sim) ->
-        csv
-            ++ fName f1
+functionPairSimilarityDataToCsv = unlines .
+    (:) "Fn1 identifier, Fn1 file path, Arity, Purity, Expl. Return, Stmts Count, \
+    \Fn2 identifier, Fn2 file path, Arity, Purity, Expl. Return, Stmts Count, Similarity score" . map
+    (\(FunctionPairCompoundSimilarity f1 f2 sim) ->
+        fName f1
             ++ ","
             ++ filePath f1
             ++ ","
@@ -157,9 +158,7 @@ functionPairSimilarityDataToCsv = foldl'
             ++ filePath f2
             ++ ","
             ++ show sim
-            ++ "\n"
     )
-    "Fn1 identifier, Fn1 file path, Fn2 identifier, Fn2 file path, Similarity score\n"
 
 -- | Performs function data analysis to calculate functions' compound diff values.
 -- | Returns the list of function pairs with their compound similarity scores, sorted descending.
