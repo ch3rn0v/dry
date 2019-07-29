@@ -4,6 +4,7 @@ module JSASTProcessor
     ( RawSourceFile(RawSourceFile)
     , RawSourceCode
     , FunctionData(FunctionData)
+    , filePath
     , fName
     , arity
     , purity
@@ -70,7 +71,7 @@ instance Show FunctionData where
 
 getJSIdent :: JSIdent -> String
 getJSIdent (JSIdentName _ s) = s
-getJSIdent JSIdentNone       = ""
+getJSIdent JSIdentNone       = "<anonymous fn>"
 
 getJSBlockStatemtns :: JSBlock -> [JSStatement]
 getJSBlockStatemtns (JSBlock _ s _) = s

@@ -5,14 +5,15 @@ where
 
 import           FileProcessor                  ( readSourceFiles )
 import           JSASTProcessor                 ( parseRawSourceFiles )
-import           Analyser                       ( analyseParsedSourceFiles
-                                                , FunctionPairCompoundSimilarity
+import           Analyser                       ( CSV
+                                                , analyseParsedSourceFiles
+                                                , functionPairSimilarityDataToCsv
                                                 )
 
-analyseSourceCode
-    :: FilePath -> String -> [String] -> IO [FunctionPairCompoundSimilarity]
+analyseSourceCode :: FilePath -> String -> [String] -> IO CSV
 analyseSourceCode path ext dirsToSkip =
-    analyseParsedSourceFiles
+    functionPairSimilarityDataToCsv
+        .   analyseParsedSourceFiles
         .   parseRawSourceFiles
         <$> readSourceFiles path ext dirsToSkip
 

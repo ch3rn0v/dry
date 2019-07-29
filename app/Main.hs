@@ -17,8 +17,8 @@ main = do
                 dirsToSkip  = drop 2 args
                 ext         = ".js"
             in  do
-                    analysedSourceCode <- analyseSourceCode pathToRead
+                    analysedSourceCodeCSV <- analyseSourceCode pathToRead
                                                             ext
                                                             dirsToSkip
-                    writeFile pathToWrite (show analysedSourceCode)
+                    writeFile pathToWrite analysedSourceCodeCSV
                     print "Done."
