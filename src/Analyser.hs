@@ -23,8 +23,8 @@ import           JSASTProcessor                 ( FunctionData
                                                 , stmts
                                                 )
 import           Helpers                        ( avgDoubles
-                                                , minMaxScaling
                                                 , cartesianProductUnique
+                                                , divLesserOverGreater
                                                 )
 
 type CSV = String
@@ -48,19 +48,19 @@ instance Ord FunctionPairCompoundSimilarity where
 
 -- | Calculates Levenshein's distance between the functions' identifiers.
 fnsLevenshteinDistance :: FunctionData -> FunctionData -> Double
-fnsLevenshteinDistance f1 f2 =
-    intToDouble $ levenshteinDistance defaultEditCosts (fName f1) (fName f2)
+fnsLevenshteinDistance f1 f2 = if ld == 0 then 1 else 1 / intToDouble ld
+    where ld = levenshteinDistance defaultEditCosts (fName f1) (fName f2)
 
 -- | Returns zero if the boolean type property values of both functions are of the same value.
 -- | Returns one otherwise.
 fnsBoolPropDiff
     :: Eq a => (FunctionData -> a) -> FunctionData -> FunctionData -> Double
-fnsBoolPropDiff boolProp f1 f2 = if boolProp f1 == boolProp f2 then 0 else 1
+fnsBoolPropDiff boolProp f1 f2 = if boolProp f1 == boolProp f2 then 1 else 0
 
 -- | Returns the abs difference between integer type property values of the functions.
 fnsIntPropDiff
     :: (FunctionData -> Int) -> FunctionData -> FunctionData -> Double
-fnsIntPropDiff intProp f1 f2 = intToDouble $ abs $ intProp f1 - intProp f2
+fnsIntPropDiff intProp f1 f2 = divLesserOverGreater (intProp f1) (intProp f2)
 
 -- | See `fnsBoolPropDiff`
 fnsPurityDiff :: FunctionData -> FunctionData -> Double
@@ -84,10 +84,10 @@ fnsStmtsCountDiff = fnsIntPropDiff (length . stmts)
 estimateRawFunctionSimilarity
     :: (FunctionData, FunctionData) -> FunctionPairRawSimilarity
 estimateRawFunctionSimilarity (f1, f2) =
-    let nameDiffW     = 1.0
-        purityDiffW   = 1.0
-        returnDiffW   = 1.0
-        arityDiffW    = 1.0
+    let nameDiffW     = 0.05
+        purityDiffW   = 0.1
+        returnDiffW   = 0.2
+        arityDiffW    = 0.1
         stmtsLenDiffW = 1.0
     in  FunctionPairRawSimilarity f1
                                   f2
@@ -97,74 +97,53 @@ estimateRawFunctionSimilarity (f1, f2) =
                                   (arityDiffW * fnsArityDiff f1 f2)
                                   (stmtsLenDiffW * fnsStmtsCountDiff f1 f2)
 
--- | Calculates max values along every diff axis.
-getMaxRawSimValues
-    :: [FunctionPairRawSimilarity] -> (Double, Double, Double, Double, Double)
-getMaxRawSimValues = foldl'
-    (\(maxND, maxPD, maxRD, maxAD, maxSLD) fprs ->
-        let maxND'  = max maxND (nameDiff fprs)
-            maxPD'  = max maxPD (purityDiff fprs)
-            maxRD'  = max maxRD (returnDiff fprs)
-            maxAD'  = max maxAD (arityDiff fprs)
-            maxSLD' = max maxSLD (stmtsLenDiff fprs)
-        in  (maxND', maxPD', maxRD', maxAD', maxSLD')
-    )
-    (0.0, 0.0, 0.0, 0.0, 0.0)
-
--- | Scales values to [0; 1], assuming minimal possible unscaled value to be zero.
--- | Accepts max value as the first argument, value to be scaled as the second.
-scaleDiffValue :: Double -> Double -> Double
-scaleDiffValue = minMaxScaling 0
-
 -- | Calculates compound diff value given the raw diff values.
 aggregateNormalizedDiffs :: [Double] -> Double
-aggregateNormalizedDiffs nDiffs = 1 - avgDoubles nDiffs
+aggregateNormalizedDiffs = avgDoubles
 
 -- | Aggregates raw similarity values of a functions pair into single compound similarity value.
 calculateFunctionPairCompoundSimilarity
-    :: [FunctionPairRawSimilarity] -> [FunctionPairCompoundSimilarity]
-calculateFunctionPairCompoundSimilarity fprss =
-    let (maxND, maxPD, maxRD, maxAD, maxSLD) = getMaxRawSimValues fprss
-    in  map
-            (\fprs ->
-                let nDiffs = map
-                        (uncurry scaleDiffValue)
-                        [ (maxND , nameDiff fprs)
-                        , (maxPD , purityDiff fprs)
-                        , (maxRD , returnDiff fprs)
-                        , (maxAD , arityDiff fprs)
-                        , (maxSLD, stmtsLenDiff fprs)
-                        ]
-                in  FunctionPairCompoundSimilarity
-                        (f1 fprs)
-                        (f2 fprs)
-                        (aggregateNormalizedDiffs nDiffs)
-            )
-            fprss
+    :: FunctionPairRawSimilarity -> FunctionPairCompoundSimilarity
+calculateFunctionPairCompoundSimilarity fprs = FunctionPairCompoundSimilarity
+    (f1 fprs)
+    (f2 fprs)
+    (aggregateNormalizedDiffs
+        [ nameDiff fprs
+        , purityDiff fprs
+        , returnDiff fprs
+        , arityDiff fprs
+        , stmtsLenDiff fprs
+        ]
+    )
 
 -- | Converts a list of FunctionPairCompoundSimilarity into a single String, ready
 -- | to be written as a csv file  (`,` as a column delimiter, `\n` as a row delimiter).
 functionPairSimilarityDataToCsv :: [FunctionPairCompoundSimilarity] -> CSV
-functionPairSimilarityDataToCsv = unlines .
-    (:) "Fn1 identifier, Fn1 file path, Arity, Purity, Expl. Return, Stmts Count, \
-    \Fn2 identifier, Fn2 file path, Arity, Purity, Expl. Return, Stmts Count, Similarity score" . map
-    (\(FunctionPairCompoundSimilarity f1 f2 sim) ->
-        fName f1
-            ++ ","
-            ++ filePath f1
-            ++ ","
-            ++ fName f2
-            ++ ","
-            ++ filePath f2
-            ++ ","
-            ++ show sim
-    )
+functionPairSimilarityDataToCsv =
+    unlines
+        . (:)
+              "Fn1 identifier, Fn1 file path, Arity, Purity, Expl. Return, Stmts Count, \
+              \Fn2 identifier, Fn2 file path, Arity, Purity, Expl. Return, Stmts Count, Similarity score"
+        . map
+              (\(FunctionPairCompoundSimilarity f1 f2 sim) ->
+                  fName f1
+                      ++ ","
+                      ++ filePath f1
+                      ++ ","
+                      ++ fName f2
+                      ++ ","
+                      ++ filePath f2
+                      ++ ","
+                      ++ show sim
+              )
 
 -- | Performs function data analysis to calculate functions' compound diff values.
 -- | Returns the list of function pairs with their compound similarity scores, sorted descending.
 analyseParsedSourceFiles :: [FunctionData] -> [FunctionPairCompoundSimilarity]
 analyseParsedSourceFiles =
     sortOn Down
-        . calculateFunctionPairCompoundSimilarity
-        . map estimateRawFunctionSimilarity
+        . map
+              ( calculateFunctionPairCompoundSimilarity
+              . estimateRawFunctionSimilarity
+              )
         . cartesianProductUnique

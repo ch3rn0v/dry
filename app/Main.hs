@@ -18,7 +18,7 @@ main = do
                 ext         = ".js"
             in  do
                     analysedSourceCodeCSV <- analyseSourceCode pathToRead
-                                                            ext
-                                                            dirsToSkip
+                                                               ext
+                                                               dirsToSkip
                     writeFile pathToWrite analysedSourceCodeCSV
                     print "Done."
