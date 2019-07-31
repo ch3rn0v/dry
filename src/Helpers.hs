@@ -32,3 +32,7 @@ divLesserOverGreater a b | a == 0 && b == 0 = 1
                          | a == 0 || b == 0 = 0
                          | a < b = intToAbsDouble a / intToAbsDouble b
                          | otherwise = intToAbsDouble b / intToAbsDouble a
+
+-- | Performs Min-Max scaling.
+minMaxScaling :: Fractional a => a -> a -> a -> a
+minMaxScaling min max value = (value - min) / (max - min)

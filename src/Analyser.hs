@@ -26,6 +26,7 @@ import           JSASTProcessor                 ( FunctionData
 import           Helpers                        ( avgDoubles
                                                 , cartesianProductUnique
                                                 , divLesserOverGreater
+                                                , minMaxScaling
                                                 )
 
 type CSV = String
@@ -38,6 +39,18 @@ data FunctionPairRawSimilarity = FunctionPairRawSimilarity { f1 :: FunctionData
                                                            , arityDiff :: Double
                                                            , stmtsLenDiff :: Double
                                                            , declarationsCountDiff :: Double }
+
+-- | Determines how important each metric is relative to other metrics.
+diffWeightsVector :: [Double]
+diffWeightsVector =
+    [ 0.05 -- nameDiff weight
+    , 0.1  -- purityDiff weight
+    , 0.2  -- returnDiff weight
+    , 0.1  -- arityDiff weight
+    , 1.0  -- stmtsLenDiff weight
+    , 1.0  -- declarationsCountDiff weight
+    ]
+
 data FunctionPairCompoundSimilarity = FunctionPairCompoundSimilarity FunctionData FunctionData Double
 
 instance Eq FunctionPairCompoundSimilarity where
@@ -88,26 +101,23 @@ fnsDeclarationsCountDiff = fnsIntPropDiff declarationsCount
 -- | in the raw form.
 estimateRawFunctionSimilarity
     :: (FunctionData, FunctionData) -> FunctionPairRawSimilarity
-estimateRawFunctionSimilarity (f1, f2) =
-    let nameDiffW              = 0.05
-        purityDiffW            = 0.1
-        returnDiffW            = 0.2
-        arityDiffW             = 0.1
-        stmtsLenDiffW          = 1.0
-        declarationsCountDiffW = 1.0
-    in  FunctionPairRawSimilarity
-            f1
-            f2
-            (nameDiffW * fnsLevenshteinDistance f1 f2)
-            (purityDiffW * fnsPurityDiff f1 f2)
-            (returnDiffW * fnsReturnDiff f1 f2)
-            (arityDiffW * fnsArityDiff f1 f2)
-            (stmtsLenDiffW * fnsStmtsCountDiff f1 f2)
-            (declarationsCountDiffW * fnsDeclarationsCountDiff f1 f2)
+estimateRawFunctionSimilarity (f1, f2) = FunctionPairRawSimilarity
+    f1
+    f2
+    (fnsLevenshteinDistance f1 f2)
+    (fnsPurityDiff f1 f2)
+    (fnsReturnDiff f1 f2)
+    (fnsArityDiff f1 f2)
+    (fnsStmtsCountDiff f1 f2)
+    (fnsDeclarationsCountDiff f1 f2)
 
 -- | Calculates compound diff value given the raw diff values.
-aggregateNormalizedDiffs :: [Double] -> Double
-aggregateNormalizedDiffs = avgDoubles
+aggregateNormalizedDiffs :: [Double] -> [Double] -> Double
+aggregateNormalizedDiffs diffWeightsVector diffValues = minMaxScaling
+    0
+    (avgDoubles diffWeightsVector)
+    aggNormalizedDiff  where
+    aggNormalizedDiff = avgDoubles $ zipWith (*) diffWeightsVector diffValues
 
 -- | Aggregates raw similarity values of a functions pair into single compound similarity value.
 calculateFunctionPairCompoundSimilarity
@@ -116,6 +126,7 @@ calculateFunctionPairCompoundSimilarity fprs = FunctionPairCompoundSimilarity
     (f1 fprs)
     (f2 fprs)
     (aggregateNormalizedDiffs
+        diffWeightsVector
         [ nameDiff fprs
         , purityDiff fprs
         , returnDiff fprs
