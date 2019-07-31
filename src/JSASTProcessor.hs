@@ -7,7 +7,7 @@ module JSASTProcessor
     , filePath
     , fName
     , arity
-    , purity
+    , impureCallsCount
     , explicitReturn
     , stmts
     , declarationsCount
@@ -15,6 +15,7 @@ module JSASTProcessor
     )
 where
 
+import           Debug.Trace                    ( trace )
 import           Data.List                      ( isInfixOf )
 import           Data.Data
 import           Language.JavaScript.Parser     ( parseModule
@@ -54,13 +55,12 @@ data RawSourceFile = RawSourceFile FilePath RawSourceCode deriving Show
 
 type FunctionIdentifier = String
 type Arity = Int
-type IsPure = Bool
 type IsReturnExplicit = Bool
 
 data FunctionData = FunctionData { filePath :: FilePath
                                  , fName :: FunctionIdentifier
                                  , arity :: Arity
-                                 , purity :: IsPure
+                                 , impureCallsCount :: Int
                                  , explicitReturn :: IsReturnExplicit
                                  , stmts :: [JSStatement]
                                  , declarationsCount :: Int
@@ -83,17 +83,6 @@ getJSBlockStatemtns (JSBlock _ s _) = s
 -- | Otherwise `False`.
 isReturnExplicit :: RawSourceCode -> Bool
 isReturnExplicit sc = "return" `isInfixOf` sc
-
--- | Returns `True` if there are exacly zero calls of other functions/object methods.
--- | Otherwise `False`.
-isPure
-    :: [JSExpression]
-    -> [JSExpression]
-    -> [JSExpression]
-    -> [JSStatement]
-    -> Bool
-isPure callExprs callExprsDot callExprsSqr callMethods =
-    null callExprs && null callExprsDot && null callExprsSqr && null callMethods
 
 -- | Counts every identifier that has been declared using `let`, `const`, or `var`.
 -- | Returns the total count of the identifiers, declared in the given `JSStatement`.
@@ -119,6 +108,27 @@ getDeclarationsCount = sum . map countDeclaredJSIdentifiers
 data JSStatementOrExpression a b = Stmt a | Expr b deriving Data
 type JSASTFn = JSStatementOrExpression JSStatement JSExpression
 
+-- | Counts every occurrence of a function call within the given function.
+countExternalCalls :: JSASTFn -> Int
+countExternalCalls jsf =
+    let
+        callExprs =
+            [ callExprs | callExprs@JSCallExpression{} <- universeBi jsf ]
+        callExprsDot =
+            [ callExprsDot
+            | callExprsDot@JSCallExpressionDot{} <- universeBi jsf
+            ]
+        callExprsSqr =
+            [ callExprsSqr
+            | callExprsSqr@JSCallExpressionSquare{} <- universeBi jsf
+            ]
+        callMethods =
+            [ callMethods | callMethods@JSMethodCall{} <- universeBi jsf ]
+    in
+        length callMethods -- because `callMethods` is of type `[JSStatement]`,
+                           -- while the other lists are `[JSExpression]`
+            + sum (map length [callExprs, callExprsDot, callExprsSqr])
+
 -- | Returns function's source code. Works for functions defined as
 -- | either `JSStatement` or `JSExpression`.
 extractFnSourceCode :: JSASTFn -> RawSourceCode
@@ -138,32 +148,17 @@ extractFnParts (Expr (JSFunctionExpression _ fIdent _ argsList _ fBlock)) =
 -- | data constructors are supported.
 jsFunctionToFunctionData :: FilePath -> JSASTFn -> FunctionData
 jsFunctionToFunctionData filePath jsf =
-    let
-        rawFunctionSourceCode   = extractFnSourceCode jsf
+    let rawFunctionSourceCode   = extractFnSourceCode jsf
         (fIdent, arity, fBlock) = extractFnParts jsf
-        callExprs =
-            [ callExprs | callExprs@JSCallExpression{} <- universeBi jsf ]
-        callExprsDot =
-            [ callExprsDot
-            | callExprsDot@JSCallExpressionDot{} <- universeBi jsf
-            ]
-        callExprsSqr =
-            [ callExprsSqr
-            | callExprsSqr@JSCallExpressionSquare{} <- universeBi jsf
-            ]
-        callMethods =
-            [ callMethods | callMethods@JSMethodCall{} <- universeBi jsf ]
-        statements = getJSBlockStatemtns fBlock
-    in
-        FunctionData
-            filePath
-            fIdent
-            arity
-            (isPure callExprs callExprsDot callExprsSqr callMethods)
-            (isReturnExplicit rawFunctionSourceCode)
-            statements
-            (getDeclarationsCount statements)
-            rawFunctionSourceCode
+        statements              = getJSBlockStatemtns fBlock
+    in  FunctionData filePath
+                     fIdent
+                     arity
+                     (countExternalCalls jsf)
+                     (isReturnExplicit rawFunctionSourceCode)
+                     statements
+                     (getDeclarationsCount statements)
+                     rawFunctionSourceCode
 jsStmtFunctionToFunctionData _ =
     error
         "Only `JSFunction` and `JSFunctionExpression` data constructors are supported"
@@ -173,7 +168,7 @@ parseRawSourceFile :: RawSourceFile -> [FunctionData]
 parseRawSourceFile (RawSourceFile path sourceCode) =
     let
         parseJSFn = jsFunctionToFunctionData path
-        jsAST     = parseModule sourceCode path
+        jsAST     = parseModule sourceCode path -- TODO: Add error processing in case AST parsing failed
         jsFunctions =
             [ jsStatements | jsStatements@JSFunction{} <- universeBi jsAST ]
         jsFunctionsInExpr =
@@ -183,7 +178,7 @@ parseRawSourceFile (RawSourceFile path sourceCode) =
         parsedJSFunctions       = map (parseJSFn . Stmt) jsFunctions
         parsedJSFunctionsInExpr = map (parseJSFn . Expr) jsFunctionsInExpr
     in
-        (parsedJSFunctions ++ parsedJSFunctionsInExpr)
+        parsedJSFunctions ++ parsedJSFunctionsInExpr
 
 -- | Parses a list of `RawSourceFile` into a list of `FunctionData`.
 parseRawSourceFiles :: [RawSourceFile] -> [FunctionData]
