@@ -10,6 +10,7 @@ module JSASTProcessor
     , purity
     , explicitReturn
     , stmts
+    , declarationsCount
     , parseRawSourceFiles
     )
 where
@@ -26,6 +27,9 @@ import           Language.JavaScript.Parser     ( parseModule
 import           Language.JavaScript.Parser.AST ( JSStatement
                                                     ( JSFunction
                                                     , JSMethodCall
+                                                    , JSLet
+                                                    , JSConstant
+                                                    , JSVariable
                                                     )
                                                 , JSExpression
                                                     ( JSFunctionExpression
@@ -59,10 +63,11 @@ data FunctionData = FunctionData { filePath :: FilePath
                                  , purity :: IsPure
                                  , explicitReturn :: IsReturnExplicit
                                  , stmts :: [JSStatement]
+                                 , declarationsCount :: Int
                                  , rawSourceCode :: RawSourceCode }
 
 instance Eq FunctionData where
-    (==) (FunctionData filePath1 fIdent1 _ _ _ _ sc1) (FunctionData filePath2 fIdent2 _ _ _ _ sc2)
+    (==) (FunctionData filePath1 fIdent1 _ _ _ _ _ sc1) (FunctionData filePath2 fIdent2 _ _ _ _ _ sc2)
         = filePath1 == filePath2 && fIdent1 == fIdent2 && sc1 == sc2
 
 -- | Returns JavaScript Function's identifier.
@@ -89,6 +94,27 @@ isPure
     -> Bool
 isPure callExprs callExprsDot callExprsSqr callMethods =
     null callExprs && null callExprsDot && null callExprsSqr && null callMethods
+
+-- | Counts every identifier that has been declared using `let`, `const`, or `var`.
+-- | Returns the total count of the identifiers, declared in the given `JSStatement`.
+countDeclaredJSIdentifiers :: JSStatement -> Int
+countDeclaredJSIdentifiers stmt =
+    let
+        jsLetDeclarations =
+            [ letDeclrs | letDeclrs@JSLet{} <- universeBi stmt ]
+        jsConstDeclarations =
+            [ letDeclrs | letDeclrs@JSConstant{} <- universeBi stmt ]
+        jsVarDeclarations =
+            [ letDeclrs | letDeclrs@JSVariable{} <- universeBi stmt ]
+    in
+        sum $ map
+            length
+            [jsLetDeclarations, jsConstDeclarations, jsVarDeclarations]
+
+-- | Counts every identifier that has been declared using `let`, `const`, or `var`.
+-- | Returns the total count of the identifiers, declared in the given list of `JSStatement`.
+getDeclarationsCount :: [JSStatement] -> Int
+getDeclarationsCount = sum . map countDeclaredJSIdentifiers
 
 data JSStatementOrExpression a b = Stmt a | Expr b deriving Data
 type JSASTFn = JSStatementOrExpression JSStatement JSExpression
@@ -136,6 +162,7 @@ jsFunctionToFunctionData filePath jsf =
             (isPure callExprs callExprsDot callExprsSqr callMethods)
             (isReturnExplicit rawFunctionSourceCode)
             statements
+            (getDeclarationsCount statements)
             rawFunctionSourceCode
 jsStmtFunctionToFunctionData _ =
     error
