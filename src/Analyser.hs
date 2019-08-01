@@ -18,7 +18,7 @@ import           JSASTProcessor                 ( FunctionData
                                                 , filePath
                                                 , fName
                                                 , arity
-                                                , impureCallsCount
+                                                , functionCallsCount
                                                 , explicitReturn
                                                 , stmts
                                                 , declarationsCount
@@ -34,7 +34,7 @@ type CSV = String
 data FunctionPairRawSimilarity = FunctionPairRawSimilarity { f1 :: FunctionData
                                                            , f2 :: FunctionData
                                                            , nameDiff :: Double
-                                                           , impureCallsDiff :: Double
+                                                           , functionCallsDiff :: Double
                                                            , returnDiff :: Double
                                                            , arityDiff :: Double
                                                            , stmtsLenDiff :: Double
@@ -44,7 +44,7 @@ data FunctionPairRawSimilarity = FunctionPairRawSimilarity { f1 :: FunctionData
 diffWeightsVector :: [Double]
 diffWeightsVector =
     [ 0.05 -- nameDiff weight
-    , 0.2  -- impureCallsDiff weight
+    , 0.2  -- functionCallsDiff weight
     , 0.2  -- returnDiff weight
     , 0.1  -- arityDiff weight
     , 0.95 -- stmtsLenDiff weight
@@ -78,8 +78,8 @@ fnsIntPropDiff
 fnsIntPropDiff intProp f1 f2 = divLesserOverGreater (intProp f1) (intProp f2)
 
 -- | See `fnsBoolPropDiff`
-fnsImpureCallsDiff :: FunctionData -> FunctionData -> Double
-fnsImpureCallsDiff = fnsIntPropDiff impureCallsCount
+fnsFunctionCallsDiff :: FunctionData -> FunctionData -> Double
+fnsFunctionCallsDiff = fnsIntPropDiff functionCallsCount
 
 -- | See `fnsBoolPropDiff`
 fnsReturnDiff :: FunctionData -> FunctionData -> Double
@@ -105,7 +105,7 @@ estimateRawFunctionSimilarity (f1, f2) = FunctionPairRawSimilarity
     f1
     f2
     (fnsLevenshteinDistance f1 f2)
-    (fnsImpureCallsDiff f1 f2)
+    (fnsFunctionCallsDiff f1 f2)
     (fnsReturnDiff f1 f2)
     (fnsArityDiff f1 f2)
     (fnsStmtsCountDiff f1 f2)
@@ -128,7 +128,7 @@ calculateFunctionPairCompoundSimilarity fprs = FunctionPairCompoundSimilarity
     (aggregateNormalizedDiffs
         diffWeightsVector
         [ nameDiff fprs
-        , impureCallsDiff fprs
+        , functionCallsDiff fprs
         , returnDiff fprs
         , arityDiff fprs
         , stmtsLenDiff fprs

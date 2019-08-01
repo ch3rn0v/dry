@@ -7,7 +7,7 @@ module JSASTProcessor
     , filePath
     , fName
     , arity
-    , impureCallsCount
+    , functionCallsCount
     , explicitReturn
     , stmts
     , declarationsCount
@@ -16,7 +16,6 @@ module JSASTProcessor
     )
 where
 
-import           Debug.Trace                    ( trace )
 import           Data.Either                    ( isRight
                                                 , fromLeft
                                                 , partitionEithers
@@ -42,6 +41,7 @@ import           Language.JavaScript.Parser.AST ( JSStatement
                                                     , JSCallExpression
                                                     , JSCallExpressionDot
                                                     , JSCallExpressionSquare
+                                                    , JSMemberExpression
                                                     )
                                                 , JSAnnot(JSNoAnnot)
                                                 , JSIdent
@@ -65,7 +65,7 @@ type IsReturnExplicit = Bool
 data FunctionData = FunctionData { filePath :: FilePath
                                  , fName :: FunctionIdentifier
                                  , arity :: Arity
-                                 , impureCallsCount :: Int
+                                 , functionCallsCount :: Int
                                  , explicitReturn :: IsReturnExplicit
                                  , stmts :: [JSStatement]
                                  , declarationsCount :: Int
@@ -114,25 +114,28 @@ data JSStatementOrExpression a b = Stmt a | Expr b deriving Data
 type JSASTFn = JSStatementOrExpression JSStatement JSExpression
 
 -- | Counts every occurrence of a function call within the given function.
-countExternalCalls :: JSASTFn -> Int
-countExternalCalls jsf =
+countFunctionCalls :: JSASTFn -> Int
+countFunctionCalls jsf =
     let
         callExprs =
-            [ callExprs | callExprs@JSCallExpression{} <- universeBi jsf ]
+            [ callExpr | callExpr@JSCallExpression{} <- universeBi jsf ]
         callExprsDot =
-            [ callExprsDot
-            | callExprsDot@JSCallExpressionDot{} <- universeBi jsf
+            [ callExprDot
+            | callExprDot@JSCallExpressionDot{} <- universeBi jsf
             ]
         callExprsSqr =
-            [ callExprsSqr
-            | callExprsSqr@JSCallExpressionSquare{} <- universeBi jsf
+            [ callExprSqr
+            | callExprSqr@JSCallExpressionSquare{} <- universeBi jsf
             ]
         callMethods =
-            [ callMethods | callMethods@JSMethodCall{} <- universeBi jsf ]
+            [ callMethod | callMethod@JSMethodCall{} <- universeBi jsf ]
+        memberExprs =
+            [ memberExpr | memberExpr@JSMemberExpression{} <- universeBi jsf ]
     in
         length callMethods -- because `callMethods` is of type `[JSStatement]`,
                            -- while the other lists are `[JSExpression]`
-            + sum (map length [callExprs, callExprsDot, callExprsSqr])
+                           + sum
+            (map length [callExprs, callExprsDot, callExprsSqr, memberExprs])
 
 -- | Returns function's source code. Works for functions defined as
 -- | either `JSStatement` or `JSExpression`.
@@ -159,7 +162,7 @@ jsFunctionToFunctionData filePath jsf =
     in  FunctionData filePath
                      fIdent
                      arity
-                     (countExternalCalls jsf)
+                     (countFunctionCalls jsf)
                      (isReturnExplicit rawFunctionSourceCode)
                      statements
                      (getDeclarationsCount statements)
