@@ -107,8 +107,8 @@ countDeclaredJSIdentifiers stmt =
 
 -- | Counts every identifier that has been declared using `let`, `const`, or `var`.
 -- | Returns the total count of the identifiers, declared in the given list of `JSStatement`.
-getDeclarationsCount :: [JSStatement] -> Int
-getDeclarationsCount = sum . map countDeclaredJSIdentifiers
+countDeclarations :: [JSStatement] -> Int
+countDeclarations = sum . map countDeclaredJSIdentifiers
 
 data JSStatementOrExpression a b = Stmt a | Expr b deriving Data
 type JSASTFn = JSStatementOrExpression JSStatement JSExpression
@@ -165,7 +165,7 @@ jsFunctionToFunctionData filePath jsf =
                      (countFunctionCalls jsf)
                      (isReturnExplicit rawFunctionSourceCode)
                      statements
-                     (getDeclarationsCount statements)
+                     (countDeclarations statements)
                      rawFunctionSourceCode
 jsStmtFunctionToFunctionData _ =
     error
