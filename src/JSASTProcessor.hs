@@ -168,14 +168,13 @@ jsStmtFunctionToFunctionData _ =
     error
         "Only `JSFunction` and `JSFunctionExpression` data constructors are supported"
 
--- | Parses `RawSourceFile` and returns
--- | either a String with error, or a list of `FunctionData`.
-parseRawSourceFile :: RawSourceFile -> Either String [FunctionData]
-parseRawSourceFile (RawSourceFile path sourceCode) =
+parseJSASTToFunctionData
+    :: FilePath -> Either String JSAST -> Either String [FunctionData]
+parseJSASTToFunctionData path (Left s) =
+    Left ("Unable to parse file `" ++ path ++ "`.\n" ++ s)
+parseJSASTToFunctionData path (Right jsAST) =
     let
         parseJSFn = jsFunctionToFunctionData path
-        jsAST     = parseModule sourceCode path
-         -- TODO: refactor to move jsFunctions and jsFunctionsInExpr to another function
         jsFunctions =
             [ jsStatements | jsStatements@JSFunction{} <- universeBi jsAST ]
         jsFunctionsInExpr =
@@ -185,15 +184,13 @@ parseRawSourceFile (RawSourceFile path sourceCode) =
         parsedJSFunctions       = map (parseJSFn . Stmt) jsFunctions
         parsedJSFunctionsInExpr = map (parseJSFn . Expr) jsFunctionsInExpr
     in
-        if isRight jsAST
-            then Right (parsedJSFunctions ++ parsedJSFunctionsInExpr)
-            else
-                Left
-                    (  "Unable to parse file `"
-                    ++ path
-                    ++ "`.\n"
-                    ++ fromLeft "" jsAST
-                    )
+        Right (parsedJSFunctions ++ parsedJSFunctionsInExpr)
+
+-- | Parses `RawSourceFile` and returns
+-- | either a String with error, or a list of `FunctionData`.
+parseRawSourceFile :: RawSourceFile -> Either String [FunctionData]
+parseRawSourceFile (RawSourceFile path sourceCode) =
+    parseJSASTToFunctionData path $ parseModule sourceCode path
 
 -- | Outputs parsing errors (if any),
 -- | otherwise outputs nothing.
