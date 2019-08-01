@@ -3,26 +3,27 @@
 This tool helps you abstract away common or repeated chunks of code by finding similar pieces.
 It will allow you to avoid repeating yourself with less effort on your side.
 
-It only works with ES5 for now.
+It only works with ES5 for now (you can use babel-cli or similar tools to transpile more recent versions to ES5).
 
 # How To Build
 
 1. `git clone https://github.com/ch3rn0v/dry.git`
 2. `cd dry`
 3. `stack build`
-4. `stack exec dry-exe <path_to_the_source_code_dir> [<dir_1_to_skip>, ...]`
+4. `stack exec dry-exe <path_to_the_source_code_dir> <path_to_the_output_csv_file> [<dir_1_to_skip>, ...]`
 
-where:
+Where:
 
-- <path_to_the_source_code_dir> is an absolute path in double quotes
-- <dir_1_to_skip> is an optional parameter, a name of a directory you'd like to skip ("node_modules", for example)
+- `<path_to_the_source_code_dir>` is an absolute path in double quotes
+- `<path_to_the_output_csv_file>` is an absolute path in double quotes
+- `[<dir_1_to_skip>, ...]` is an optional parameter: name(s) of directory(ies) you'd like to skip ("node_modules", for example)
 
 Example:
 
-`stack exec dry-exe "/Users/___/dev/js_source_code_files/" "folder_1_to_exclude" "folder_2_to_exclude"`
+`stack exec dry-exe "/Users/___/dev/js_source_code_files" "/Users/___/dev/analysis/results.csv" "folder_1_to_exclude" "folder_2_to_exclude"`
 
 Instead of steps 3 and 4 you can just do:
-`stack run dry-exe "/Users/___/dev/js_source_code_files/" "folder_1_to_exclude" "folder_2_to_exclude"`
+`stack run dry-exe "/Users/___/dev/js_source_code_files" "/Users/___/dev/analysis/results.csv" "folder_1_to_exclude" "folder_2_to_exclude"`
 
 # Acknowledgements
 
