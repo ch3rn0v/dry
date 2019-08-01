@@ -12,10 +12,15 @@ module JSASTProcessor
     , stmts
     , declarationsCount
     , parseRawSourceFiles
+    , partitionASTParsingResults
     )
 where
 
 import           Debug.Trace                    ( trace )
+import           Data.Either                    ( isRight
+                                                , fromLeft
+                                                , partitionEithers
+                                                )
 import           Data.List                      ( isInfixOf )
 import           Data.Data
 import           Language.JavaScript.Parser     ( parseModule
@@ -163,12 +168,14 @@ jsStmtFunctionToFunctionData _ =
     error
         "Only `JSFunction` and `JSFunctionExpression` data constructors are supported"
 
--- | Parses `RawSourceFile` into a list of `FunctionData`.
-parseRawSourceFile :: RawSourceFile -> [FunctionData]
+-- | Parses `RawSourceFile` and returns
+-- | either a String with error, or a list of `FunctionData`.
+parseRawSourceFile :: RawSourceFile -> Either String [FunctionData]
 parseRawSourceFile (RawSourceFile path sourceCode) =
     let
         parseJSFn = jsFunctionToFunctionData path
-        jsAST     = parseModule sourceCode path -- TODO: Add error processing in case AST parsing failed
+        jsAST     = parseModule sourceCode path
+         -- TODO: refactor to move jsFunctions and jsFunctionsInExpr to another function
         jsFunctions =
             [ jsStatements | jsStatements@JSFunction{} <- universeBi jsAST ]
         jsFunctionsInExpr =
@@ -178,8 +185,37 @@ parseRawSourceFile (RawSourceFile path sourceCode) =
         parsedJSFunctions       = map (parseJSFn . Stmt) jsFunctions
         parsedJSFunctionsInExpr = map (parseJSFn . Expr) jsFunctionsInExpr
     in
-        parsedJSFunctions ++ parsedJSFunctionsInExpr
+        if isRight jsAST
+            then Right (parsedJSFunctions ++ parsedJSFunctionsInExpr)
+            else
+                Left
+                    (  "Unable to parse file `"
+                    ++ path
+                    ++ "`.\n"
+                    ++ fromLeft "" jsAST
+                    )
+
+-- | Outputs parsing errors (if any),
+-- | otherwise outputs nothing.
+outputASTParsingErrors :: [String] -> IO ()
+outputASTParsingErrors []     = pure ()
+outputASTParsingErrors errors = do
+    putStrLn
+        $  "\nFiles failed to be parsed: "
+        ++ show (length errors)
+        ++ "\n\nDetails:"
+    mapM_ putStrLn errors
+
+-- | Splits AST parsing results into errors and `[FunctionData]`,
+-- | outputs errors (if any), and returns `[FunctionData]`.
+partitionASTParsingResults
+    :: [Either String [FunctionData]] -> IO [FunctionData]
+partitionASTParsingResults astParsingResults =
+    let (errors, parsedFunctionData) = partitionEithers astParsingResults
+    in  do
+            outputASTParsingErrors errors
+            pure $ concat parsedFunctionData
 
 -- | Parses a list of `RawSourceFile` into a list of `FunctionData`.
-parseRawSourceFiles :: [RawSourceFile] -> [FunctionData]
-parseRawSourceFiles = concatMap parseRawSourceFile
+parseRawSourceFiles :: [RawSourceFile] -> [Either String [FunctionData]]
+parseRawSourceFiles = map parseRawSourceFile

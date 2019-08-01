@@ -4,22 +4,26 @@ module Lib
 where
 
 import           FileProcessor                  ( readSourceFiles )
-import           JSASTProcessor                 ( parseRawSourceFiles )
+import           JSASTProcessor                 ( parseRawSourceFiles
+                                                , partitionASTParsingResults
+                                                )
 import           Analyser                       ( CSV
                                                 , analyseParsedSourceFiles
                                                 , functionPairSimilarityDataToCsv
                                                 )
 
 analyseSourceCode :: FilePath -> String -> [String] -> IO CSV
-analyseSourceCode path ext dirsToSkip =
-    functionPairSimilarityDataToCsv
-        .   analyseParsedSourceFiles
-        .   parseRawSourceFiles
-        <$> readSourceFiles path ext dirsToSkip
+analyseSourceCode path ext dirsToSkip = do
+    sourceFiles <- readSourceFiles path ext dirsToSkip
+    let parsedRawSourceFiles = parseRawSourceFiles sourceFiles
+    -- Note that `partitionASTParsingResults` _outputs_ errors (if any),
+    -- and returns only correct ASTs
+    correctASTs <- partitionASTParsingResults parsedRawSourceFiles
+    let analysedASTs = analyseParsedSourceFiles correctASTs
+    pure $ functionPairSimilarityDataToCsv analysedASTs
 
 {-
     TODO:
-    - add error handling in parseRawSourceFile
     - devise a metric to compare function vectors (consider cosine similarity, or k-NN)
 
 -}

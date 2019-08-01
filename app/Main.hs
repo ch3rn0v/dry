@@ -21,4 +21,4 @@ main = do
                                                                ext
                                                                dirsToSkip
                     writeFile pathToWrite analysedSourceCodeCSV
-                    print "Done."
+                    putStrLn "\nDone."
