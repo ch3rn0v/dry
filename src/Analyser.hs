@@ -1,15 +1,12 @@
 module Analyser
-    ( FunctionPairCompoundSimilarity
-    , CSV
+    ( CSV
     , analyseParsedSourceFiles
     , functionPairSimilarityDataToCsv
     )
 where
 
 import           Data.Ord                       ( Down(Down) )
-import           Data.List                      ( foldl'
-                                                , sortOn
-                                                )
+import           Data.List                      ( sortOn )
 import           Data.Data                      ( Constr )
 import           Data.Map.Strict                ( Map
                                                 , elems
@@ -138,7 +135,11 @@ calculateFunctionPairCompoundSimilarity fprs = FunctionPairCompoundSimilarity
     (f2 fprs)
     (aggregateNormalizedDiffs
         diffWeightsVector
-        [nameDiff fprs, arityDiff fprs, constrCountsDiff fprs, stmtsCountDiff fprs]
+        [ nameDiff fprs
+        , arityDiff fprs
+        , constrCountsDiff fprs
+        , stmtsCountDiff fprs
+        ]
     )
 
 -- | Converts a list of FunctionPairCompoundSimilarity into a single String, ready

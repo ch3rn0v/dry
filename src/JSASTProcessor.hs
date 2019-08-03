@@ -2,7 +2,6 @@
 
 module JSASTProcessor
     ( RawSourceFile(RawSourceFile)
-    , RawSourceCode
     , FunctionData(FunctionData)
     , filePath
     , fName
@@ -16,13 +15,8 @@ where
 
 import           Data.Generics.Schemes          ( everything )
 import           Data.Generics.Aliases          ( extQ )
-import           Data.Either                    ( isRight
-                                                , fromLeft
-                                                , partitionEithers
-                                                )
-import           Data.List                      ( foldl'
-                                                , isInfixOf
-                                                )
+import           Data.Either                    ( partitionEithers )
+import           Data.List                      ( foldl' )
 import           Data.Data                      ( Data
                                                 , Constr
                                                 , toConstr
@@ -39,19 +33,9 @@ import           Language.JavaScript.Parser     ( parseModule
                                                     , JSAstExpression
                                                     )
                                                 )
-import           Language.JavaScript.Parser.AST ( JSStatement
-                                                    ( JSFunction
-                                                    , JSMethodCall
-                                                    , JSLet
-                                                    , JSConstant
-                                                    , JSVariable
-                                                    )
+import           Language.JavaScript.Parser.AST ( JSStatement(JSFunction)
                                                 , JSExpression
                                                     ( JSFunctionExpression
-                                                    , JSCallExpression
-                                                    , JSCallExpressionDot
-                                                    , JSCallExpressionSquare
-                                                    , JSMemberExpression
                                                     )
                                                 , JSAnnot(JSNoAnnot)
                                                 , JSIdent
