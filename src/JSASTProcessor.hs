@@ -7,21 +7,31 @@ module JSASTProcessor
     , filePath
     , fName
     , arity
-    , functionCallsCount
-    , explicitReturn
-    , stmts
-    , declarationsCount
+    , entitiesCountMap
+    , stmtsCount
     , parseRawSourceFiles
     , partitionASTParsingResults
     )
 where
 
+import           Data.Generics.Schemes          ( everything )
+import           Data.Generics.Aliases          ( extQ )
 import           Data.Either                    ( isRight
                                                 , fromLeft
                                                 , partitionEithers
                                                 )
-import           Data.List                      ( isInfixOf )
-import           Data.Data
+import           Data.List                      ( foldl'
+                                                , isInfixOf
+                                                )
+import           Data.Data                      ( Data
+                                                , Constr
+                                                , toConstr
+                                                )
+import           Data.Map.Strict                ( Map
+                                                , empty
+                                                , unionWith
+                                                , singleton
+                                                )
 import           Language.JavaScript.Parser     ( parseModule
                                                 , renderToString
                                                 , JSAST
@@ -49,30 +59,32 @@ import           Language.JavaScript.Parser.AST ( JSStatement
                                                     , JSIdentNone
                                                     )
                                                 , JSBlock(JSBlock)
+                                                , JSUnaryOp
+                                                , JSBinOp
                                                 )
 import           Data.Generics.Uniplate.DataOnly
                                                 ( universe
                                                 , universeBi
                                                 )
 
+instance Ord Constr where
+    (<=) c1 c2 = show c1 <= show c2
+
 type RawSourceCode = String
 data RawSourceFile = RawSourceFile FilePath RawSourceCode deriving Show
 
 type FunctionIdentifier = String
 type Arity = Int
-type IsReturnExplicit = Bool
 
 data FunctionData = FunctionData { filePath :: FilePath
                                  , fName :: FunctionIdentifier
                                  , arity :: Arity
-                                 , functionCallsCount :: Int
-                                 , explicitReturn :: IsReturnExplicit
-                                 , stmts :: [JSStatement]
-                                 , declarationsCount :: Int
+                                 , entitiesCountMap :: Map Constr Int
+                                 , stmtsCount :: Int
                                  , rawSourceCode :: RawSourceCode }
 
 instance Eq FunctionData where
-    (==) (FunctionData filePath1 fIdent1 _ _ _ _ _ sc1) (FunctionData filePath2 fIdent2 _ _ _ _ _ sc2)
+    (==) (FunctionData filePath1 fIdent1 _ _ _ sc1) (FunctionData filePath2 fIdent2 _ _ _ sc2)
         = filePath1 == filePath2 && fIdent1 == fIdent2 && sc1 == sc2
 
 -- | Returns JavaScript Function's identifier.
@@ -84,58 +96,8 @@ getJSIdent JSIdentNone       = "<anonymous fn>"
 getJSBlockStatemtns :: JSBlock -> [JSStatement]
 getJSBlockStatemtns (JSBlock _ s _) = s
 
--- | Returns `True` if the provided source code has an occurrence of a `return`.
--- | Otherwise `False`.
-isReturnExplicit :: RawSourceCode -> Bool
-isReturnExplicit sc = "return" `isInfixOf` sc
-
--- | Counts every identifier that has been declared using `let`, `const`, or `var`.
--- | Returns the total count of the identifiers, declared in the given `JSStatement`.
-countDeclaredJSIdentifiers :: JSStatement -> Int
-countDeclaredJSIdentifiers stmt =
-    let
-        jsLetDeclarations =
-            [ letDeclrs | letDeclrs@JSLet{} <- universeBi stmt ]
-        jsConstDeclarations =
-            [ letDeclrs | letDeclrs@JSConstant{} <- universeBi stmt ]
-        jsVarDeclarations =
-            [ letDeclrs | letDeclrs@JSVariable{} <- universeBi stmt ]
-    in
-        sum $ map
-            length
-            [jsLetDeclarations, jsConstDeclarations, jsVarDeclarations]
-
--- | Counts every identifier that has been declared using `let`, `const`, or `var`.
--- | Returns the total count of the identifiers, declared in the given list of `JSStatement`.
-countDeclarations :: [JSStatement] -> Int
-countDeclarations = sum . map countDeclaredJSIdentifiers
-
 data JSStatementOrExpression a b = Stmt a | Expr b deriving Data
 type JSASTFn = JSStatementOrExpression JSStatement JSExpression
-
--- | Counts every occurrence of a function call within the given function.
-countFunctionCalls :: JSASTFn -> Int
-countFunctionCalls jsf =
-    let
-        callExprs =
-            [ callExpr | callExpr@JSCallExpression{} <- universeBi jsf ]
-        callExprsDot =
-            [ callExprDot
-            | callExprDot@JSCallExpressionDot{} <- universeBi jsf
-            ]
-        callExprsSqr =
-            [ callExprSqr
-            | callExprSqr@JSCallExpressionSquare{} <- universeBi jsf
-            ]
-        callMethods =
-            [ callMethod | callMethod@JSMethodCall{} <- universeBi jsf ]
-        memberExprs =
-            [ memberExpr | memberExpr@JSMemberExpression{} <- universeBi jsf ]
-    in
-        length callMethods -- because `callMethods` is of type `[JSStatement]`,
-                           -- while the other lists are `[JSExpression]`
-                           + sum
-            (map length [callExprs, callExprsDot, callExprsSqr, memberExprs])
 
 -- | Returns function's source code. Works for functions defined as
 -- | either `JSStatement` or `JSExpression`.
@@ -151,25 +113,40 @@ extractFnParts (Stmt (JSFunction _ fIdent _ argsList _ fBlock _)) =
 extractFnParts (Expr (JSFunctionExpression _ fIdent _ argsList _ fBlock)) =
     (getJSIdent fIdent, length (universe argsList), fBlock)
 
+-- | Recursively traverses `JSStatement` building a Map,
+-- | to count all occurrences of every constructor used within
+-- | the given `JSStatement` tree.
+countConstructorOccurrences :: JSStatement -> Map Constr Int
+countConstructorOccurrences = everything
+    (unionWith (+))
+    (      const empty
+    `extQ` (\x -> singleton (toConstr (x :: JSStatement)) 1)
+    `extQ` (\x -> singleton (toConstr (x :: JSExpression)) 1)
+    `extQ` (\x -> singleton (toConstr (x :: JSUnaryOp)) 1)
+    `extQ` (\x -> singleton (toConstr (x :: JSBinOp)) 1)
+    )
+
 -- | Parses function (defined as either `JSStatement` or `JSExpression`)
 -- | into `FunctionData`. Only `JSFunction` and `JSFunctionExpression`
 -- | data constructors are supported.
 jsFunctionToFunctionData :: FilePath -> JSASTFn -> FunctionData
 jsFunctionToFunctionData filePath jsf =
-    let rawFunctionSourceCode   = extractFnSourceCode jsf
-        (fIdent, arity, fBlock) = extractFnParts jsf
+    let (fIdent, arity, fBlock) = extractFnParts jsf
         statements              = getJSBlockStatemtns fBlock
-    in  FunctionData filePath
-                     fIdent
-                     arity
-                     (countFunctionCalls jsf)
-                     (isReturnExplicit rawFunctionSourceCode)
-                     statements
-                     (countDeclarations statements)
-                     rawFunctionSourceCode
-jsStmtFunctionToFunctionData _ =
-    error
-        "Only `JSFunction` and `JSFunctionExpression` data constructors are supported"
+        rawFunctionSourceCode   = extractFnSourceCode jsf
+    in  FunctionData
+            filePath
+            fIdent
+            arity
+            (foldl'
+                (\countersMap stmts -> unionWith (+) countersMap
+                    $ countConstructorOccurrences stmts
+                )
+                empty
+                statements
+            )
+            (length statements)
+            rawFunctionSourceCode
 
 parseJSASTToFunctionData
     :: FilePath -> Either String JSAST -> Either String [FunctionData]

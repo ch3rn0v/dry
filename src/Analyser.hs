@@ -10,6 +10,12 @@ import           Data.Ord                       ( Down(Down) )
 import           Data.List                      ( foldl'
                                                 , sortOn
                                                 )
+import           Data.Data                      ( Constr )
+import           Data.Map.Strict                ( Map
+                                                , elems
+                                                , intersectionWith
+                                                , difference
+                                                )
 import           Numeric.Extra                  ( intToDouble )
 import           Text.EditDistance              ( defaultEditCosts
                                                 , levenshteinDistance
@@ -18,10 +24,8 @@ import           JSASTProcessor                 ( FunctionData
                                                 , filePath
                                                 , fName
                                                 , arity
-                                                , functionCallsCount
-                                                , explicitReturn
-                                                , stmts
-                                                , declarationsCount
+                                                , entitiesCountMap
+                                                , stmtsCount
                                                 )
 import           Helpers                        ( avgDoubles
                                                 , cartesianProductUnique
@@ -30,26 +34,14 @@ import           Helpers                        ( avgDoubles
                                                 )
 
 type CSV = String
+type ConstrCountMap = Map Constr Int
 
 data FunctionPairRawSimilarity = FunctionPairRawSimilarity { f1 :: FunctionData
                                                            , f2 :: FunctionData
                                                            , nameDiff :: Double
-                                                           , functionCallsDiff :: Double
-                                                           , returnDiff :: Double
                                                            , arityDiff :: Double
-                                                           , stmtsLenDiff :: Double
-                                                           , declarationsCountDiff :: Double }
-
--- | Determines how important each metric is relative to other metrics.
-diffWeightsVector :: [Double]
-diffWeightsVector =
-    [ 0.05 -- nameDiff weight
-    , 0.2  -- functionCallsDiff weight
-    , 0.2  -- returnDiff weight
-    , 0.1  -- arityDiff weight
-    , 0.95 -- stmtsLenDiff weight
-    , 1.0  -- declarationsCountDiff weight
-    ]
+                                                           , constrCountsDiff :: Double
+                                                           , stmtsCountDiff :: Double }
 
 data FunctionPairCompoundSimilarity = FunctionPairCompoundSimilarity FunctionData FunctionData Double
 
@@ -66,35 +58,47 @@ fnsLevenshteinDistance :: FunctionData -> FunctionData -> Double
 fnsLevenshteinDistance f1 f2 = if ld == 0 then 1 else 1 / intToDouble ld
     where ld = levenshteinDistance defaultEditCosts (fName f1) (fName f2)
 
--- | Returns zero if the boolean type property values of both functions are of the same value.
--- | Returns one otherwise.
-fnsBoolPropDiff
-    :: Eq a => (FunctionData -> a) -> FunctionData -> FunctionData -> Double
-fnsBoolPropDiff boolProp f1 f2 = if boolProp f1 == boolProp f2 then 1 else 0
-
--- | Returns the abs difference between integer type property values of the functions.
-fnsIntPropDiff
-    :: (FunctionData -> Int) -> FunctionData -> FunctionData -> Double
-fnsIntPropDiff intProp f1 f2 = divLesserOverGreater (intProp f1) (intProp f2)
-
--- | See `fnsBoolPropDiff`
-fnsFunctionCallsDiff :: FunctionData -> FunctionData -> Double
-fnsFunctionCallsDiff = fnsIntPropDiff functionCallsCount
-
--- | See `fnsBoolPropDiff`
-fnsReturnDiff :: FunctionData -> FunctionData -> Double
-fnsReturnDiff = fnsBoolPropDiff explicitReturn
-
--- | See `fnsIntPropDiff`
+-- | Returns the division of the lesser arity over the greater one,
+-- | except two cases:
+-- | - returns 1 if both are zero,
+-- | - returns 0 if only one is zero.
 fnsArityDiff :: FunctionData -> FunctionData -> Double
-fnsArityDiff = fnsIntPropDiff arity
+fnsArityDiff f1 f2 = divLesserOverGreater (arity f1) (arity f2)
 
--- | See `fnsIntPropDiff`
+-- | Returns the division of the lesser count of statements over the greater one,
+-- | except two cases:
+-- | - returns 1 if both are zero,
+-- | - returns 0 if only one is zero.
 fnsStmtsCountDiff :: FunctionData -> FunctionData -> Double
-fnsStmtsCountDiff = fnsIntPropDiff (length . stmts)
+fnsStmtsCountDiff f1 f2 = divLesserOverGreater (stmtsCount f1) (stmtsCount f2)
 
-fnsDeclarationsCountDiff :: FunctionData -> FunctionData -> Double
-fnsDeclarationsCountDiff = fnsIntPropDiff declarationsCount
+-- | Calculates functions' similarity score, based on the number of occurrences
+-- | of _shared_ constructors in the function's `JSStatement` tree.
+calculateSharedConstrSim :: ConstrCountMap -> ConstrCountMap -> Double
+calculateSharedConstrSim m1 m2 =
+    avgDoubles $ elems $ intersectionWith divLesserOverGreater m1 m2
+
+-- | Calculates functions' similarity score, based on the number of occurrences
+-- | of _mutually unique_ constructors in the function's `JSStatement` tree.
+calculateUniqueConstrSim :: ConstrCountMap -> ConstrCountMap -> Double
+calculateUniqueConstrSim m1 m2 =
+    1 -- because all the metrics are bound to the range of [0; 1]
+        - sumAllUniqueElems m1 m2
+        / sumAllElems [m1, m2]
+  where
+    sumElemsToDouble = intToDouble . sum . elems
+    sumUniqueElems   = sumElemsToDouble . uncurry difference
+    sumAllUniqueElems a b = sumUniqueElems (a, b) + sumUniqueElems (b, a)
+    sumAllElems = sum . map sumElemsToDouble
+
+-- | Calculates functions' similarity score, based on the number of occurrences
+-- | of constructors in the function's `JSStatement` tree.
+fnsConstrCountsDiff :: FunctionData -> FunctionData -> Double
+fnsConstrCountsDiff f1 f2 =
+    (calculateSharedConstrSim m1 m2 + calculateUniqueConstrSim m1 m2) / 2
+  where
+    m1 = entitiesCountMap f1
+    m2 = entitiesCountMap f2
 
 -- | Calculates similarity scores along every axis for every pair of functions
 -- | that are compared. Returns FunctionPairRawSimilarity that stores the diffs
@@ -105,11 +109,9 @@ estimateRawFunctionSimilarity (f1, f2) = FunctionPairRawSimilarity
     f1
     f2
     (fnsLevenshteinDistance f1 f2)
-    (fnsFunctionCallsDiff f1 f2)
-    (fnsReturnDiff f1 f2)
     (fnsArityDiff f1 f2)
+    (fnsConstrCountsDiff f1 f2)
     (fnsStmtsCountDiff f1 f2)
-    (fnsDeclarationsCountDiff f1 f2)
 
 -- | Calculates compound diff value given the raw diff values.
 aggregateNormalizedDiffs :: [Double] -> [Double] -> Double
@@ -119,6 +121,15 @@ aggregateNormalizedDiffs diffWeightsVector diffValues = minMaxScaling
     aggNormalizedDiff  where
     aggNormalizedDiff = avgDoubles $ zipWith (*) diffWeightsVector diffValues
 
+-- | Determines how important each metric is relative to other metrics.
+diffWeightsVector :: [Double]
+diffWeightsVector =
+    [ 0.05 -- nameDiff weight
+    , 0.1  -- arityDiff weight
+    , 1.0  -- constrCountsDiff weight
+    , 1.0  -- stmtsCountDiff weight
+    ]
+
 -- | Aggregates raw similarity values of a functions pair into single compound similarity value.
 calculateFunctionPairCompoundSimilarity
     :: FunctionPairRawSimilarity -> FunctionPairCompoundSimilarity
@@ -127,13 +138,7 @@ calculateFunctionPairCompoundSimilarity fprs = FunctionPairCompoundSimilarity
     (f2 fprs)
     (aggregateNormalizedDiffs
         diffWeightsVector
-        [ nameDiff fprs
-        , functionCallsDiff fprs
-        , returnDiff fprs
-        , arityDiff fprs
-        , stmtsLenDiff fprs
-        , declarationsCountDiff fprs
-        ]
+        [nameDiff fprs, arityDiff fprs, constrCountsDiff fprs, stmtsCountDiff fprs]
     )
 
 -- | Converts a list of FunctionPairCompoundSimilarity into a single String, ready

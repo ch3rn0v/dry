@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ca153a7580c419492fcee27a48ab13de48636ea201786031c74c5437324dcb2f
+-- hash: 545f28e8eaa1392fb56a3b0c570820d31f5d690f209f0ea30a4dee57cec8540c
 
 name:           dry
 version:        0.1.0.0
@@ -37,12 +37,14 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , containers
     , directory
     , edit-distance
     , extra
     , language-javascript
     , path
     , path-io
+    , syb
     , uniplate
   default-language: Haskell2010
 
@@ -55,6 +57,7 @@ executable dry-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , directory
     , dry
     , edit-distance
@@ -62,6 +65,7 @@ executable dry-exe
     , language-javascript
     , path
     , path-io
+    , syb
     , uniplate
   default-language: Haskell2010
 
@@ -75,6 +79,7 @@ test-suite dry-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , directory
     , dry
     , edit-distance
@@ -82,5 +87,6 @@ test-suite dry-test
     , language-javascript
     , path
     , path-io
+    , syb
     , uniplate
   default-language: Haskell2010

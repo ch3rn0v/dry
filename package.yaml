@@ -24,6 +24,8 @@ dependencies:
   - path
   - path-io
   - uniplate
+  - containers
+  - syb
   - language-javascript
   - extra
   - edit-distance
