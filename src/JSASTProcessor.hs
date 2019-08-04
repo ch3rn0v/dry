@@ -3,6 +3,7 @@
 module JSASTProcessor
     ( RawSourceFile(RawSourceFile)
     , FunctionData(FunctionData)
+    , ConstrCountMap
     , filePath
     , fName
     , arity
@@ -21,6 +22,7 @@ import           Data.Data                      ( Data
                                                 , Constr
                                                 , toConstr
                                                 )
+import           Numeric.Extra                  ( intToDouble )
 import           Data.Map.Strict                ( Map
                                                 , empty
                                                 , unionWith
@@ -50,9 +52,15 @@ import           Data.Generics.Uniplate.DataOnly
                                                 ( universe
                                                 , universeBi
                                                 )
+import           JSSettings                     ( defaultConstructorWeight
+                                                , constructorWeightsMap
+                                                )
+import           Helpers                        ( combineWithKeyAndDefault )
 
 instance Ord Constr where
     (<=) c1 c2 = show c1 <= show c2
+
+type ConstrCountMap = Map String Double
 
 type RawSourceCode = String
 data RawSourceFile = RawSourceFile FilePath RawSourceCode deriving Show
@@ -63,7 +71,7 @@ type Arity = Int
 data FunctionData = FunctionData { filePath :: FilePath
                                  , fName :: FunctionIdentifier
                                  , arity :: Arity
-                                 , entitiesCountMap :: Map Constr Int
+                                 , entitiesCountMap :: ConstrCountMap
                                  , stmtsCount :: Int
                                  , rawSourceCode :: RawSourceCode }
 
@@ -97,18 +105,27 @@ extractFnParts (Stmt (JSFunction _ fIdent _ argsList _ fBlock _)) =
 extractFnParts (Expr (JSFunctionExpression _ fIdent _ argsList _ fBlock)) =
     (getJSIdent fIdent, length (universe argsList), fBlock)
 
+-- | Given the count of a constructor's occurrences and the corresponding
+-- | weight, returns the weighted constructor's occurrences count.
+multiplyConstructorCountByWeight :: Int -> Double -> Double
+multiplyConstructorCountByWeight c w = w * intToDouble c
+
 -- | Recursively traverses `JSStatement` building a Map,
 -- | to count all occurrences of every constructor used within
 -- | the given `JSStatement` tree.
-countConstructorOccurrences :: JSStatement -> Map Constr Int
-countConstructorOccurrences = everything
-    (unionWith (+))
-    (      const empty
-    `extQ` (\x -> singleton (toConstr (x :: JSStatement)) 1)
-    `extQ` (\x -> singleton (toConstr (x :: JSExpression)) 1)
-    `extQ` (\x -> singleton (toConstr (x :: JSUnaryOp)) 1)
-    `extQ` (\x -> singleton (toConstr (x :: JSBinOp)) 1)
-    )
+countConstructorOccurrences :: JSStatement -> ConstrCountMap
+countConstructorOccurrences =
+    combineWithKeyAndDefault multiplyConstructorCountByWeight
+                             defaultConstructorWeight
+                             constructorWeightsMap
+        . everything
+              (unionWith (+))
+              (      const empty
+              `extQ` (\x -> singleton (show $ toConstr (x :: JSStatement)) 1)
+              `extQ` (\x -> singleton (show $ toConstr (x :: JSExpression)) 1)
+              `extQ` (\x -> singleton (show $ toConstr (x :: JSUnaryOp)) 1)
+              `extQ` (\x -> singleton (show $ toConstr (x :: JSBinOp)) 1)
+              )
 
 -- | Parses function (defined as either `JSStatement` or `JSExpression`)
 -- | into `FunctionData`. Only `JSFunction` and `JSFunctionExpression`
@@ -122,16 +139,13 @@ jsFunctionToFunctionData filePath jsf =
             filePath
             fIdent
             arity
-            (foldl'
-                (\countersMap stmts -> unionWith (+) countersMap
-                    $ countConstructorOccurrences stmts
-                )
-                empty
-                statements
-            )
+            (foldl' (unionWith (+)) empty $ map countConstructorOccurrences statements)
             (length statements)
             rawFunctionSourceCode
 
+-- | Extracts all functions from the given `JSAST`,
+-- | returns them as a list of `FunctionData`
+-- | (or a `String` containing error message).
 parseJSASTToFunctionData
     :: FilePath -> Either String JSAST -> Either String [FunctionData]
 parseJSASTToFunctionData path (Left s) =

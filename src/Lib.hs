@@ -24,7 +24,7 @@ analyseSourceCode path ext dirsToSkip = do
 
 {-
     TODO:
-    - introduce weights to Constr Occurrence Maps (see `countConstructorOccurrences`)
+    - consider incorporating the order of appearance into the metric
     - devise a metric to compare function vectors (consider cosine similarity, or k-NN)
 
 -}

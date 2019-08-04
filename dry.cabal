@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 545f28e8eaa1392fb56a3b0c570820d31f5d690f209f0ea30a4dee57cec8540c
+-- hash: da15ce3984317615911e38d8e216a228bd36f047d19d4574ec17e9efc648f087
 
 name:           dry
 version:        0.1.0.0
@@ -30,6 +30,7 @@ library
       FileProcessor
       Helpers
       JSASTProcessor
+      JSSettings
       Lib
   other-modules:
       Paths_dry

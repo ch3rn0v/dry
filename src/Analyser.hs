@@ -18,6 +18,7 @@ import           Text.EditDistance              ( defaultEditCosts
                                                 , levenshteinDistance
                                                 )
 import           JSASTProcessor                 ( FunctionData
+                                                , ConstrCountMap
                                                 , filePath
                                                 , fName
                                                 , arity
@@ -31,7 +32,6 @@ import           Helpers                        ( avgDoubles
                                                 )
 
 type CSV = String
-type ConstrCountMap = Map Constr Int
 
 data FunctionPairRawSimilarity = FunctionPairRawSimilarity { f1 :: FunctionData
                                                            , f2 :: FunctionData
@@ -83,10 +83,10 @@ calculateUniqueConstrSim m1 m2 =
         - sumAllUniqueElems m1 m2
         / sumAllElems [m1, m2]
   where
-    sumElemsToDouble = intToDouble . sum . elems
-    sumUniqueElems   = sumElemsToDouble . uncurry difference
+    sumElemsToDouble      = sum . elems
+    sumUniqueElems        = sumElemsToDouble . uncurry difference
     sumAllUniqueElems a b = sumUniqueElems (a, b) + sumUniqueElems (b, a)
-    sumAllElems = sum . map sumElemsToDouble
+    sumAllElems           = sum . map sumElemsToDouble
 
 -- | Calculates functions' similarity score, based on the number of occurrences
 -- | of constructors in the function's `JSStatement` tree.
@@ -121,8 +121,8 @@ aggregateNormalizedDiffs diffWeightsVector diffValues = minMaxScaling
 -- | Determines how important each metric is relative to other metrics.
 diffWeightsVector :: [Double]
 diffWeightsVector =
-    [ 0.05 -- nameDiff weight
-    , 0.1  -- arityDiff weight
+    [ 0.15 -- nameDiff weight
+    , 0.3  -- arityDiff weight
     , 1.0  -- constrCountsDiff weight
     , 1.0  -- stmtsCountDiff weight
     ]
