@@ -24,6 +24,7 @@ cartesianProductUnique (x : xs) = map ((,) x) xs ++ cartesianProductUnique xs
 
 -- | Calculates average value of the list of Double values.
 avgDoubles :: [Double] -> Double
+avgDoubles [] = error "List must not be null"
 avgDoubles ls = sum ls / intToDouble (length ls)
 
 -- | Takes the absolute value of an Int, converts it to Double.
@@ -47,8 +48,8 @@ minMaxScaling min max value = (value - min) / (max - min)
 -- | If the key is absent, the `defaultValue` is used.
 combineWithKeyAndDefault
   :: Ord k => (a -> b -> c) -> b -> Map k b -> Map k a -> Map k c
-combineWithKeyAndDefault f defaultValue defaultMap =
-    mapWithKey combineWithValueOrDefault
-    where
-        combineWithValueOrDefault k v =
-            maybe (f v defaultValue) (f v) $ lookup k defaultMap
+combineWithKeyAndDefault f defaultValue defaultMap = mapWithKey
+  combineWithValueOrDefault
+ where
+  combineWithValueOrDefault k v =
+    maybe (f v defaultValue) (f v) $ lookup k defaultMap

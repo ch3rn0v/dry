@@ -73,8 +73,12 @@ fnsStmtsCountDiff f1 f2 = divLesserOverGreater (stmtsCount f1) (stmtsCount f2)
 -- | Calculates functions' similarity score, based on the number of occurrences
 -- | of _shared_ constructors in the function's `JSStatement` tree.
 calculateSharedConstrSim :: ConstrCountMap -> ConstrCountMap -> Double
-calculateSharedConstrSim m1 m2 =
-    avgDoubles $ elems $ intersectionWith divLesserOverGreater m1 m2
+calculateSharedConstrSim m1 m2 = if null sharedConstructorsCount
+    then 0
+    else avgDoubles sharedConstructorsCount
+  where
+    mapWithSharedKeys       = intersectionWith divLesserOverGreater m1 m2
+    sharedConstructorsCount = elems mapWithSharedKeys
 
 -- | Calculates functions' similarity score, based on the number of occurrences
 -- | of _mutually unique_ constructors in the function's `JSStatement` tree.
