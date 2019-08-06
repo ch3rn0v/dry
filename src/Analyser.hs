@@ -20,6 +20,7 @@ import           Text.EditDistance              ( defaultEditCosts
 import           JSASTProcessor                 ( FunctionData
                                                 , ConstrCountMap
                                                 , filePath
+                                                , lineNumber
                                                 , fName
                                                 , arity
                                                 , entitiesCountMap
@@ -83,10 +84,10 @@ calculateUniqueConstrSim m1 m2 =
         - sumAllUniqueElems m1 m2
         / sumAllElems [m1, m2]
   where
-    sumElemsToDouble      = sum . elems
-    sumUniqueElems        = sumElemsToDouble . uncurry difference
+    sumElemsToDouble = sum . elems
+    sumUniqueElems   = sumElemsToDouble . uncurry difference
     sumAllUniqueElems a b = sumUniqueElems (a, b) + sumUniqueElems (b, a)
-    sumAllElems           = sum . map sumElemsToDouble
+    sumAllElems = sum . map sumElemsToDouble
 
 -- | Calculates functions' similarity score, based on the number of occurrences
 -- | of constructors in the function's `JSStatement` tree.
@@ -156,10 +157,14 @@ functionPairSimilarityDataToCsv =
                   fName f1
                       ++ ","
                       ++ filePath f1
+                      ++ ":"
+                      ++ lineNumber f1
                       ++ ","
                       ++ fName f2
                       ++ ","
                       ++ filePath f2
+                      ++ ":"
+                      ++ lineNumber f2
                       ++ ","
                       ++ show sim
               )

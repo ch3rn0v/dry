@@ -5,6 +5,7 @@ module JSASTProcessor
     , FunctionData(FunctionData)
     , ConstrCountMap
     , filePath
+    , lineNumber
     , fName
     , arity
     , entitiesCountMap
@@ -35,11 +36,13 @@ import           Language.JavaScript.Parser     ( parseModule
                                                     , JSAstExpression
                                                     )
                                                 )
+import           Language.JavaScript.Parser.SrcLocation
+                                                ( TokenPosn(TokenPn) )
 import           Language.JavaScript.Parser.AST ( JSStatement(JSFunction)
                                                 , JSExpression
                                                     ( JSFunctionExpression
                                                     )
-                                                , JSAnnot(JSNoAnnot)
+                                                , JSAnnot(JSAnnot, JSNoAnnot)
                                                 , JSIdent
                                                     ( JSIdentName
                                                     , JSIdentNone
@@ -67,8 +70,10 @@ data RawSourceFile = RawSourceFile FilePath RawSourceCode deriving Show
 
 type FunctionIdentifier = String
 type Arity = Int
+type LineNumber = String
 
 data FunctionData = FunctionData { filePath :: FilePath
+                                 , lineNumber :: LineNumber
                                  , fName :: FunctionIdentifier
                                  , arity :: Arity
                                  , entitiesCountMap :: ConstrCountMap
@@ -76,8 +81,8 @@ data FunctionData = FunctionData { filePath :: FilePath
                                  , rawSourceCode :: RawSourceCode }
 
 instance Eq FunctionData where
-    (==) (FunctionData filePath1 fIdent1 _ _ _ sc1) (FunctionData filePath2 fIdent2 _ _ _ sc2)
-        = filePath1 == filePath2 && fIdent1 == fIdent2 && sc1 == sc2
+    (==) (FunctionData _ _ fIdent1 _ _ _ sc1) (FunctionData _ _ fIdent2 _ _ _ sc2)
+        = fIdent1 == fIdent2 && sc1 == sc2
 
 -- | Returns JavaScript Function's identifier.
 getJSIdent :: JSIdent -> String
@@ -87,6 +92,12 @@ getJSIdent JSIdentNone       = "<anonymous fn>"
 -- | Given `JSBlock`, returns the list of its statements.
 getJSBlockStatemtns :: JSBlock -> [JSStatement]
 getJSBlockStatemtns (JSBlock _ s _) = s
+
+-- | Given `JSAnnot` constructed with `JSAnnot`, returns the token's line number.
+-- | In case no data about token's position is available, returns an empty string.
+getLineNumber :: JSAnnot -> LineNumber
+getLineNumber (JSAnnot (TokenPn _ lineNr _) _) = show lineNr
+getLineNumber _ = ""
 
 data JSStatementOrExpression a b = Stmt a | Expr b deriving Data
 type JSASTFn = JSStatementOrExpression JSStatement JSExpression
@@ -99,11 +110,19 @@ extractFnSourceCode (Expr jsf) = renderToString $ JSAstExpression jsf JSNoAnnot
 
 -- | Returns function's identifier, arity and its `JSBlock`.
 -- | Works for functions defined as either `JSStatement` or `JSExpression`.
-extractFnParts :: JSASTFn -> (FunctionIdentifier, Arity, JSBlock)
-extractFnParts (Stmt (JSFunction _ fIdent _ argsList _ fBlock _)) =
-    (getJSIdent fIdent, length (universe argsList), fBlock)
-extractFnParts (Expr (JSFunctionExpression _ fIdent _ argsList _ fBlock)) =
-    (getJSIdent fIdent, length (universe argsList), fBlock)
+extractFnParts :: JSASTFn -> (FunctionIdentifier, Arity, JSBlock, LineNumber)
+extractFnParts (Stmt (JSFunction fAnnot fIdent _ argsList _ fBlock _)) =
+    ( getJSIdent fIdent
+    , length (universe argsList)
+    , fBlock
+    , getLineNumber fAnnot
+    )
+extractFnParts (Expr (JSFunctionExpression fAnnot fIdent _ argsList _ fBlock))
+    = ( getJSIdent fIdent
+      , length (universe argsList)
+      , fBlock
+      , getLineNumber fAnnot
+      )
 
 -- | Given the count of a constructor's occurrences and the corresponding
 -- | weight, returns the weighted constructor's occurrences count.
@@ -113,8 +132,8 @@ multiplyConstructorCountByWeight c w = w * intToDouble c
 -- | Recursively traverses `JSStatement` building a Map,
 -- | to count all occurrences of every constructor used within
 -- | the given `JSStatement` tree.
-countConstructorOccurrences :: JSStatement -> ConstrCountMap
-countConstructorOccurrences =
+constructorsFromStatement :: JSStatement -> ConstrCountMap
+constructorsFromStatement =
     combineWithKeyAndDefault multiplyConstructorCountByWeight
                              defaultConstructorWeight
                              constructorWeightsMap
@@ -127,21 +146,28 @@ countConstructorOccurrences =
               `extQ` (\x -> singleton (show $ toConstr (x :: JSBinOp)) 1)
               )
 
+-- | Recursively traverses each `JSStatement` building a Map,
+-- | then unions the maps with (+), returning the map of all
+-- | the constructors and their total respective counts.
+constructorsFromStatements :: [JSStatement] -> ConstrCountMap
+constructorsFromStatements =
+    foldl' (unionWith (+)) empty . map constructorsFromStatement
+
 -- | Parses function (defined as either `JSStatement` or `JSExpression`)
 -- | into `FunctionData`. Only `JSFunction` and `JSFunctionExpression`
 -- | data constructors are supported.
 jsFunctionToFunctionData :: FilePath -> JSASTFn -> FunctionData
 jsFunctionToFunctionData filePath jsf =
-    let (fIdent, arity, fBlock) = extractFnParts jsf
-        statements              = getJSBlockStatemtns fBlock
-        rawFunctionSourceCode   = extractFnSourceCode jsf
-    in  FunctionData
-            filePath
-            fIdent
-            arity
-            (foldl' (unionWith (+)) empty $ map countConstructorOccurrences statements)
-            (length statements)
-            rawFunctionSourceCode
+    let (fIdent, arity, fBlock, lineNumber) = extractFnParts jsf
+        statements                          = getJSBlockStatemtns fBlock
+        rawFunctionSourceCode               = extractFnSourceCode jsf
+    in  FunctionData filePath
+                     lineNumber
+                     fIdent
+                     arity
+                     (constructorsFromStatements statements)
+                     (length statements)
+                     rawFunctionSourceCode
 
 -- | Extracts all functions from the given `JSAST`,
 -- | returns them as a list of `FunctionData`
