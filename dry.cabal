@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9fc9d61946e4a8b03a2ed99f35f3aa5dc5376ea145a5a2748d6aa1a0bf54a638
+-- hash: 9c32261a204c832e079d50b34d0931f337e2cff6c607c945f212a971c3051154
 
 name:           dry
 version:        0.1.0.0
@@ -39,6 +39,8 @@ library
     , directory
     , edit-distance
     , extra
+    , lens >=4.17.1
+    , lens-aeson
     , path
     , path-io
     , text
@@ -59,6 +61,8 @@ executable dry-exe
     , dry
     , edit-distance
     , extra
+    , lens >=4.17.1
+    , lens-aeson
     , path
     , path-io
     , text
@@ -80,6 +84,8 @@ test-suite dry-test
     , dry
     , edit-distance
     , extra
+    , lens >=4.17.1
+    , lens-aeson
     , path
     , path-io
     , text

@@ -16,7 +16,7 @@ analyseJSONAst path = do
 
 {-
     TODO:
-    - traverse all nodes recursively
+    - split the root node into separate trees before parsing functions from each of them
     - fix statements counter to be recursive
     - reimplement analysis (see es5 branch)
     - reimplement writing output to csv (see es5 branch)

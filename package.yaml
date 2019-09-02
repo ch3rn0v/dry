@@ -25,7 +25,9 @@ dependencies:
   - path-io
   - uniplate
   - text
+  - lens >= 4.17.1
   - aeson
+  - lens-aeson
   - extra
   - edit-distance
 
