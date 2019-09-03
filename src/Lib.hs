@@ -16,7 +16,6 @@ analyseJSONAst path = do
 
 {-
     TODO:
-    - fix statements counter to be recursive
     - reimplement analysis (see es5 branch)
     - reimplement writing output to csv (see es5 branch)
     - consider incorporating the order of appearance into the metric

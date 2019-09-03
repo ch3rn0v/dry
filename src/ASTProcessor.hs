@@ -15,6 +15,7 @@ where
 
 import           Data.Maybe                     ( isJust )
 import           Data.Either                    ( rights )
+import           Data.Text                      ( Text )
 import           Data.Text.Lazy                 ( pack )
 import           Data.Text.Lazy.Encoding        ( encodeUtf8 )
 import           Data.Aeson
@@ -28,6 +29,8 @@ import           Control.Lens                   ( cosmos
                                                 , toListOf
                                                 )
 import           FileProcessor                  ( RawJSONFile(RawJSONFile) )
+
+type StatementData = Text
 
 type JSONParsingError = String
 type LineNumber = Int
@@ -48,11 +51,17 @@ data TreeData = TreeData { rootNode :: Value
                          , treeLanguage :: Language
                          } deriving Show
 
-isFunction :: Value -> Bool
-isFunction v = v ^? (key "term" . _String) == Just "Function"
+isKeyPresent :: Text -> Value -> Bool
+isKeyPresent keyName v = isJust $ v ^? (key keyName . nonNull)
+
+isStatement :: Value -> Bool
+isStatement = isKeyPresent "term"
 
 isTree :: Value -> Bool
-isTree v = isJust $ v ^? (key "tree" . nonNull)
+isTree = isKeyPresent "tree"
+
+isFunction :: Value -> Bool
+isFunction v = v ^? (key "term" . _String) == Just "Function"
 
 getAllElements :: (Value -> Bool) -> Value -> [Object]
 getAllElements filterFn = toListOf (cosmos . filtered filterFn . _Object)
@@ -63,31 +72,48 @@ getAllFunctions = getAllElements isFunction
 getAllTrees :: Value -> [Object]
 getAllTrees = getAllElements isTree
 
+getAllStatements :: Value -> [Object]
+getAllStatements = getAllElements isStatement
+
+parseStmtObject :: Object -> Parser StatementData
+parseStmtObject o = o .: "term"
+
+isntStmtsWrapper :: StatementData -> Bool
+isntStmtsWrapper = (/= "Statements")
+
+parseAllStatements :: [Object] -> [StatementData]
+parseAllStatements =
+    filter isntStmtsWrapper . rights . map (parseEither parseStmtObject)
+
 parseFunctionObject :: FilePath -> Language -> Object -> Parser FunctionData
 parseFunctionObject path language o = do
-    sourceSpan              <- o .: "sourceSpan"
-    [lineNumber, _]         <- sourceSpan .: "start"
-    functionName            <- o .: "functionName"
-    name                    <- functionName .: "name"
-    (parameters :: [Value]) <- o .: "functionParameters"
-    body                    <- o .: "functionBody"
-    (statements :: [Value]) <- body .: "statements"
+    sourceSpan                   <- o .: "sourceSpan"
+    [lineNumber, _]              <- sourceSpan .: "start"
+    functionName                 <- o .: "functionName"
+    name                         <- functionName .: "name"
+    (parameters :: [Value])      <- o .: "functionParameters"
+    body                         <- o .: "functionBody"
+    (outerStatements :: [Value]) <- body .: "statements"
+
+    let allStatements    = concatMap getAllStatements outerStatements
+    let parsedStatements = parseAllStatements allStatements
     return $ FunctionData path
                           lineNumber
                           language
                           name
                           (length parameters)
-                          (length statements) -- TODO: count _every_ statement, not just the outer ones
+                          (length parsedStatements)
 
 parseTreeFunctions :: TreeData -> [Either String FunctionData]
-parseTreeFunctions (TreeData rootNode treeFilePath treeLanguage) =
-    map (parseEither $ parseFunctionObject treeFilePath treeLanguage) (getAllFunctions rootNode)
+parseTreeFunctions (TreeData rootNode treeFilePath treeLanguage) = map
+    (parseEither $ parseFunctionObject treeFilePath treeLanguage)
+    (getAllFunctions rootNode)
 
 parseTreeObject :: Object -> Parser TreeData
 parseTreeObject o = do
     (rootNode :: Value) <- o .: "tree"
-    treeFilePath <- o .: "path"
-    treeLanguage <- o .: "language"
+    treeFilePath        <- o .: "path"
+    treeLanguage        <- o .: "language"
 
     return $ TreeData rootNode treeFilePath treeLanguage
 
@@ -96,8 +122,7 @@ parseTreeObject o = do
 parseRawJSONFile :: RawJSONFile -> Either String [FunctionData]
 parseRawJSONFile (RawJSONFile _ contents) =
     let decodedJSON = eitherDecode $ encodeUtf8 $ pack contents
-    in
-        case decodedJSON of
+    in  case decodedJSON of
             (Left error) -> Left error
             (Right rootNode) ->
                 Right
