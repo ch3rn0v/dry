@@ -13,6 +13,7 @@ module ASTProcessor
     )
 where
 
+import           Data.Maybe                     ( isJust )
 import           Data.Either                    ( rights )
 import           Data.Text.Lazy                 ( pack )
 import           Data.Text.Lazy.Encoding        ( encodeUtf8 )
@@ -42,14 +43,28 @@ data FunctionData = FunctionData { filePath :: FilePath
                                  , stmtsCount :: Int
                                  } deriving Show
 
+data TreeData = TreeData { rootNode :: Value
+                         , treeFilePath :: FilePath
+                         , treeLanguage :: Language
+                         } deriving Show
+
 isFunction :: Value -> Bool
 isFunction v = v ^? (key "term" . _String) == Just "Function"
 
-getAllFunctions :: Value -> [Object]
-getAllFunctions = toListOf (cosmos . filtered isFunction . _Object)
+isTree :: Value -> Bool
+isTree v = isJust $ v ^? (key "tree" . nonNull)
 
-parseFunctionObject :: Object -> Parser FunctionData
-parseFunctionObject o = do
+getAllElements :: (Value -> Bool) -> Value -> [Object]
+getAllElements filterFn = toListOf (cosmos . filtered filterFn . _Object)
+
+getAllFunctions :: Value -> [Object]
+getAllFunctions = getAllElements isFunction
+
+getAllTrees :: Value -> [Object]
+getAllTrees = getAllElements isTree
+
+parseFunctionObject :: FilePath -> Language -> Object -> Parser FunctionData
+parseFunctionObject path language o = do
     sourceSpan              <- o .: "sourceSpan"
     [lineNumber, _]         <- sourceSpan .: "start"
     functionName            <- o .: "functionName"
@@ -57,22 +72,37 @@ parseFunctionObject o = do
     (parameters :: [Value]) <- o .: "functionParameters"
     body                    <- o .: "functionBody"
     (statements :: [Value]) <- body .: "statements"
-    return $ FunctionData "path"
+    return $ FunctionData path
                           lineNumber
-                          "language"
+                          language
                           name
                           (length parameters)
                           (length statements) -- TODO: count _every_ statement, not just the outer ones
+
+parseTreeFunctions :: TreeData -> [Either String FunctionData]
+parseTreeFunctions (TreeData rootNode treeFilePath treeLanguage) =
+    map (parseEither $ parseFunctionObject treeFilePath treeLanguage) (getAllFunctions rootNode)
+
+parseTreeObject :: Object -> Parser TreeData
+parseTreeObject o = do
+    (rootNode :: Value) <- o .: "tree"
+    treeFilePath <- o .: "path"
+    treeLanguage <- o .: "language"
+
+    return $ TreeData rootNode treeFilePath treeLanguage
 
 -- | Given `RawJSONFile` tries to parse its `contents`.
 -- | Returns either an error's description, or `ParsedFiles`.
 parseRawJSONFile :: RawJSONFile -> Either String [FunctionData]
 parseRawJSONFile (RawJSONFile _ contents) =
     let decodedJSON = eitherDecode $ encodeUtf8 $ pack contents
-    in  case decodedJSON of
+    in
+        case decodedJSON of
             (Left error) -> Left error
             (Right rootNode) ->
                 Right
                     $ rights
-                    $ map (parseEither parseFunctionObject)
-                    $ getAllFunctions rootNode
+                    $ concatMap parseTreeFunctions
+                    $ rights
+                    $ map (parseEither parseTreeObject)
+                    $ getAllTrees rootNode
