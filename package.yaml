@@ -21,6 +21,7 @@ description: Please see the README on GitHub at <https://github.com/ch3rn0v/dry#
 dependencies:
   - base >= 4.7 && < 5
   - directory
+  - unordered-containers >= 0.2.10.0
   - path
   - path-io
   - uniplate

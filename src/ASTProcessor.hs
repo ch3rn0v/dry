@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -13,6 +14,9 @@ module ASTProcessor
     )
 where
 
+import           Data.HashMap.Strict            ( HashMap
+                                                , fromListWith
+                                                )
 import           Data.Maybe                     ( isJust )
 import           Data.Either                    ( rights )
 import           Data.Text                      ( Text )
@@ -37,12 +41,13 @@ type LineNumber = Int
 type Language = String
 type FunctionIdentifier = String
 type Arity = Int
+type StatementsCountMap = HashMap Text Int
 data FunctionData = FunctionData { filePath :: FilePath
                                  , lineNumber :: LineNumber
                                  , language :: Language
                                  , name :: FunctionIdentifier
                                  , arity :: Arity
-                                 -- , entitiesCountMap :: ConstrCountMap
+                                 , stmtsCountMap :: StatementsCountMap
                                  , stmtsCount :: Int
                                  } deriving Show
 
@@ -102,6 +107,7 @@ parseFunctionObject path language o = do
                           language
                           name
                           (length parameters)
+                          (fromListWith (+) $ map (, 1) parsedStatements)
                           (length parsedStatements)
 
 parseTreeFunctions :: TreeData -> [Either String FunctionData]

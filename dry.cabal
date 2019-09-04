@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9c32261a204c832e079d50b34d0931f337e2cff6c607c945f212a971c3051154
+-- hash: 023839117958fe00dd738104ac5fdd4efbb3a8983e1863bd1917b694bb23f177
 
 name:           dry
 version:        0.1.0.0
@@ -45,6 +45,7 @@ library
     , path-io
     , text
     , uniplate
+    , unordered-containers >=0.2.10.0
   default-language: Haskell2010
 
 executable dry-exe
@@ -67,6 +68,7 @@ executable dry-exe
     , path-io
     , text
     , uniplate
+    , unordered-containers >=0.2.10.0
   default-language: Haskell2010
 
 test-suite dry-test
@@ -90,4 +92,5 @@ test-suite dry-test
     , path-io
     , text
     , uniplate
+    , unordered-containers >=0.2.10.0
   default-language: Haskell2010
