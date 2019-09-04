@@ -4,6 +4,8 @@ module Main where
 
 import           System.Environment             ( getArgs )
 import           Lib                            ( analyseJSONAst )
+import           Analyser                       ( functionPairSimilarityDataToCsv
+                                                )
 
 main :: IO ()
 main = do
@@ -17,5 +19,10 @@ main = do
             let pathToRead  = head args
                 pathToWrite = args !! 1
             in  do
-                    analyseJSONAst pathToRead
+                    analysisResult <- analyseJSONAst pathToRead
+                    case analysisResult of
+                        (Left error) -> putStrLn error
+                        (Right analysisResultCSV) ->
+                            writeFile pathToWrite analysisResultCSV
+
                     putStrLn "\nDone."

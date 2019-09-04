@@ -23,10 +23,10 @@ Where:
 
 Example:
 
-`stack exec dry-exe "/Users/**_/dev/parsed.json" "/Users/_**/dev/analysis/results.csv"
+`stack exec dry-exe "/Users/**_/dev/parsed.json" "/Users/_**/dev/analysis/results.csv"`
 
 Instead of steps 3 and 4 you can just do:
-`stack run dry-exe "/Users/**_/dev/parsed.json" "/Users/_**/dev/analysis/results.csv"
+`stack run dry-exe "/Users/**_/dev/parsed.json" "/Users/_**/dev/analysis/results.csv"`
 
 # Acknowledgements
 

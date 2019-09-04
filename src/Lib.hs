@@ -5,19 +5,25 @@ where
 
 import           FileProcessor                  ( readJSONFile )
 import           ASTProcessor                   ( parseRawJSONFile )
+import           Analyser                       ( CSV
+                                                , analyseParsedFunctionData
+                                                , functionPairSimilarityDataToCsv
+                                                )
 
-analyseJSONAst :: FilePath -> IO ()
+analyseJSONAst :: FilePath -> IO (Either String CSV)
 analyseJSONAst path = do
     rawJSONFile <- readJSONFile path
     let parsedJSONFile = parseRawJSONFile rawJSONFile
     case parsedJSONFile of
-        (Left  errorMessage) -> putStrLn errorMessage
-        (Right functionData) -> print functionData
+        (Left errorMessage) -> return $ Left errorMessage
+        (Right functionData) ->
+            return
+                $ Right
+                $ functionPairSimilarityDataToCsv
+                $ analyseParsedFunctionData functionData
 
 {-
     TODO:
-    - reimplement analysis (see es5 branch)
-    - reimplement writing output to csv (see es5 branch)
     - consider incorporating the order of appearance into the metric
     - devise a metric to compare function vectors (consider cosine similarity, or k-NN)
 

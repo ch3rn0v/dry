@@ -11,6 +11,14 @@ Parses AST that is output by semantic library
 -}
 module ASTProcessor
     ( parseRawJSONFile
+    , FunctionData
+    , StatementsCountMap
+    , filePath
+    , lineNumber
+    , name
+    , arity
+    , stmtsCountMap
+    , stmtsCount
     )
 where
 
