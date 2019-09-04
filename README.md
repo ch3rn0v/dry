@@ -29,7 +29,7 @@ Instead of steps 3 and 4 you can just do:
 
 # Acknowledgements
 
-This tool wouldn't be possible without awesome Haskell community,
+This tool wouldn't have been possible without awesome Haskell community,
 [@haskellru](https://t.me/haskellru) in particular.
 
 You can find the list of libraries used in package.yaml
