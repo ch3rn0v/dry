@@ -13,7 +13,10 @@ It supports all the languages that Semantic [supports](https://github.com/github
 1. `git clone https://github.com/ch3rn0v/dry.git`
 2. `cd dry`
 3. `stack build`
-4. `stack exec dry-exe <path_to_the_json_file> <path_to_the_output_csv_file>`
+
+# How To Execute
+
+1. `stack exec dry-exe <path_to_the_json_file> <path_to_the_output_csv_file>`
 
 Where:
 
@@ -24,7 +27,8 @@ Example:
 
 `stack exec dry-exe "/Users/**/dev/parsed.json" "/Users/**/dev/analysis/results.csv"`
 
-Instead of steps 3 and 4 you can just do:
+Instead of `stack build` followed by `stack exec` you can use `stack run`, like this:
+
 `stack run dry-exe "/Users/**/dev/parsed.json" "/Users/**/dev/analysis/results.csv"`
 
 # Acknowledgements
