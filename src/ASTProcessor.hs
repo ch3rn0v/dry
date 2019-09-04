@@ -71,21 +71,23 @@ isFunction v = v ^? (key "term" . _String) == Just "Function"
 getAllElements :: (Value -> Bool) -> Value -> [Object]
 getAllElements filterFn = toListOf (cosmos . filtered filterFn . _Object)
 
+getAllStatements :: Value -> [Object]
+getAllStatements = getAllElements isStatement
+
 getAllFunctions :: Value -> [Object]
 getAllFunctions = getAllElements isFunction
 
 getAllTrees :: Value -> [Object]
 getAllTrees = getAllElements isTree
 
-getAllStatements :: Value -> [Object]
-getAllStatements = getAllElements isStatement
+isntStmtsWrapper :: StatementData -> Bool
+isntStmtsWrapper = (/= "Statements")
 
 parseStmtObject :: Object -> Parser StatementData
 parseStmtObject o = o .: "term"
 
-isntStmtsWrapper :: StatementData -> Bool
-isntStmtsWrapper = (/= "Statements")
-
+-- | Parses all statements, filtering out
+-- | statement wrapper nodes.
 parseAllStatements :: [Object] -> [StatementData]
 parseAllStatements =
     filter isntStmtsWrapper . rights . map (parseEither parseStmtObject)
@@ -123,7 +125,7 @@ parseTreeObject o = do
 
     return $ TreeData rootNode treeFilePath treeLanguage
 
--- | Given `RawJSONFile` tries to parse its `contents`.
+-- | Given `RawJSONFile`, tries to parse its `contents`.
 -- | Returns either an error's description, or `ParsedFiles`.
 parseRawJSONFile :: RawJSONFile -> Either String [FunctionData]
 parseRawJSONFile (RawJSONFile _ contents) =
