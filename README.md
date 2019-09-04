@@ -1,13 +1,12 @@
 # DRY
 
 This tool helps you abstract away common or repeated chunks of code by finding similar pieces.
-It will allow you to avoid repeating yourself with less effort on your side.
+It allows you to avoid repeating yourself with less effort on your side.
 
-It only works with ES5 for now (you can use babel-cli or similar tools to transpile more recent versions to ES5).
-Use `es5` branch for that.
-
-The `master` branch will hold the version that makes use of [Semantic](https://github.com/github/semantic)'s json output.
+The tool makes use of [Semantic](https://github.com/github/semantic)'s json output.
 (Because as of now, Semantic [isn't published to hackage](https://github.com/github/semantic/issues/16) yet).
+
+It supports all the languages that Semantic [supports](https://github.com/github/semantic#language-support)
 
 # How To Build
 
@@ -23,10 +22,10 @@ Where:
 
 Example:
 
-`stack exec dry-exe "/Users/**_/dev/parsed.json" "/Users/_**/dev/analysis/results.csv"`
+`stack exec dry-exe "/Users/**/dev/parsed.json" "/Users/**/dev/analysis/results.csv"`
 
 Instead of steps 3 and 4 you can just do:
-`stack run dry-exe "/Users/**_/dev/parsed.json" "/Users/_**/dev/analysis/results.csv"`
+`stack run dry-exe "/Users/**/dev/parsed.json" "/Users/**/dev/analysis/results.csv"`
 
 # Acknowledgements
 
