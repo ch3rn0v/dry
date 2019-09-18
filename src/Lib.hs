@@ -25,6 +25,7 @@ analyseJSONAst path = do
 {-
     TODO:
     - consider incorporating the order of appearance into the metric
-    - devise a metric to compare function vectors (consider cosine similarity, or k-NN)
+    - devise a metric to compare function vectors (consider cosine similarity, or k-NN),
+      preferably faster than O(N^2)
 
 -}

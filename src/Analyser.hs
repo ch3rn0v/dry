@@ -2,7 +2,6 @@
 Module      : Analyser
 Description : Calculates similarity scores for FunctionData pairs
 -}
-
 module Analyser
     ( CSV
     , analyseParsedFunctionData
