@@ -91,10 +91,10 @@ calculateUniqueStmtsSim m1 m2 =
         - sumAllUniqueElems m1 m2
         / sumAllElems [m1, m2]
   where
-    sumElemsToDouble = intToDouble . sum . elems
-    sumUniqueElems   = sumElemsToDouble . uncurry difference
+    sumElems = sum . elems
+    sumUniqueElems   = sumElems . uncurry difference
     sumAllUniqueElems a b = sumUniqueElems (a, b) + sumUniqueElems (b, a)
-    sumAllElems = sum . map sumElemsToDouble
+    sumAllElems = sum . map sumElems
 
 -- | Calculates functions' similarity score, based on the number of occurrences
 -- | of statements in the functions' tree.

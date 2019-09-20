@@ -22,8 +22,11 @@ module ASTProcessor
     )
 where
 
+import           Prelude                 hiding ( lookup )
 import           Data.HashMap.Strict            ( HashMap
                                                 , fromListWith
+                                                , lookup
+                                                , mapWithKey
                                                 )
 import           Data.Maybe                     ( isJust )
 import           Data.Either                    ( rights )
@@ -41,6 +44,9 @@ import           Control.Lens                   ( cosmos
                                                 , toListOf
                                                 )
 import           FileProcessor                  ( RawJSONFile(RawJSONFile) )
+import           StatementWeights               ( defaultWeight
+                                                , stmtWeights
+                                                )
 
 type StatementData = Text
 
@@ -49,7 +55,7 @@ type LineNumber = Int
 type Language = String
 type FunctionIdentifier = String
 type Arity = Int
-type StatementsCountMap = HashMap Text Int
+type StatementsCountMap = HashMap Text Double
 data FunctionData = FunctionData { filePath :: FilePath
                                  , lineNumber :: LineNumber
                                  , language :: Language
@@ -89,16 +95,22 @@ getAllTrees :: Value -> [Object]
 getAllTrees = getAllElements isTree
 
 isntStmtsWrapper :: StatementData -> Bool
-isntStmtsWrapper = (/= "Statements")
+isntStmtsWrapper sd = sd /= "Statements" && sd /= "StatementBlock"
 
 parseStmtObject :: Object -> Parser StatementData
 parseStmtObject o = o .: "term"
 
 -- | Parses all statements, filtering out
 -- | statement wrapper nodes.
-parseAllStatements :: [Object] -> [StatementData]
+parseAllStatements :: [Value] -> [StatementData]
 parseAllStatements =
-    filter isntStmtsWrapper . rights . map (parseEither parseStmtObject)
+    filter isntStmtsWrapper . rights . map (parseEither parseStmtObject) . concatMap getAllStatements
+
+buildStatementsHashMap :: [StatementData] -> StatementsCountMap
+buildStatementsHashMap = fromListWith (+) . map (, 1)
+
+multiplyHashMapByWeights :: StatementsCountMap -> StatementsCountMap
+multiplyHashMapByWeights = mapWithKey (\k v -> maybe (v * defaultWeight) (v *) $ lookup k stmtWeights)
 
 parseFunctionObject :: FilePath -> Language -> Object -> Parser FunctionData
 parseFunctionObject path language o = do
@@ -110,15 +122,16 @@ parseFunctionObject path language o = do
     body                         <- o .: "functionBody"
     (outerStatements :: [Value]) <- body .: "statements"
 
-    let allStatements    = concatMap getAllStatements outerStatements
-    let parsedStatements = parseAllStatements allStatements
+    let allStatements = parseAllStatements outerStatements
+    let weightedStatements = multiplyHashMapByWeights $ buildStatementsHashMap allStatements
+
     return $ FunctionData path
                           lineNumber
                           language
                           name
                           (length parameters)
-                          (fromListWith (+) $ map (, 1) parsedStatements)
-                          (length parsedStatements)
+                          weightedStatements
+                          (length allStatements)
 
 parseTreeFunctions :: TreeData -> [Either String FunctionData]
 parseTreeFunctions (TreeData rootNode treeFilePath treeLanguage) = map

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 28978662f8d5de04a9401407164110310d66ec08942579a695f6908c1310861d
+-- hash: 4317dba736f00d92f136db034985dac84cc8dc8f2cae267ef20580378a78726b
 
 name:           dry
 version:        0.1.0.0
@@ -31,6 +31,7 @@ library
       FileProcessor
       Helpers
       Lib
+      StatementWeights
   other-modules:
       Paths_dry
   hs-source-dirs:
