@@ -110,8 +110,9 @@ oneOverDepthFractionsSum :: [Int] -> Double
 oneOverDepthFractionsSum = sum . map ((1 /) . intToDouble)
 
 fnsStmtsDataDiff :: FunctionData -> FunctionData -> Double
-fnsStmtsDataDiff f1 f2 = sum (IM.elems stmtsCountsDiffMap)
-    / oneOverDepthFractionsSum deepestKeys
+fnsStmtsDataDiff f1 f2 = if maxPossibleDiffSum == 0
+    then 1 -- If both functions are empty-bodied, they are similar
+    else countsDiffSum / maxPossibleDiffSum
   where
     sd1                = stmtsData f1
     sd2                = stmtsData f2
@@ -122,6 +123,8 @@ fnsStmtsDataDiff f1 f2 = sum (IM.elems stmtsCountsDiffMap)
     deepestKeys = if length (IM.keys sd1) > length (IM.keys sd2)
         then IM.keys sd1
         else IM.keys sd2
+    countsDiffSum      = sum (IM.elems stmtsCountsDiffMap)
+    maxPossibleDiffSum = oneOverDepthFractionsSum deepestKeys
 
 -- | Calculates similarity scores along every axis for every pair of functions
 -- | that are compared. Returns FunctionPairRawSimilarity that stores the diffs
