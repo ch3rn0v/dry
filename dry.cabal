@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4317dba736f00d92f136db034985dac84cc8dc8f2cae267ef20580378a78726b
+-- hash: 1494c5ba00ee5266ecab2585ca6dec30645d688660796e51aebdade0dceeebdb
 
 name:           dry
 version:        0.1.0.0
@@ -12,7 +12,7 @@ description:    Please see the README on GitHub at <https://github.com/ch3rn0v/d
 homepage:       https://github.com/ch3rn0v/dry#readme
 bug-reports:    https://github.com/ch3rn0v/dry/issues
 author:         Ilya Chernov
-maintainer:      ilya.v.chernov@gmail.com
+maintainer:     ilya.v.chernov@gmail.com
 copyright:      2019 Ilya Chernov
 license:        BSD3
 license-file:   LICENSE
@@ -36,9 +36,11 @@ library
       Paths_dry
   hs-source-dirs:
       src
+  ghc-options: -Wall
   build-depends:
       aeson
     , base >=4.7 && <5
+    , containers
     , directory
     , edit-distance
     , extra
@@ -57,10 +59,11 @@ executable dry-exe
       Paths_dry
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
   build-depends:
       aeson
     , base >=4.7 && <5
+    , containers
     , directory
     , dry
     , edit-distance
@@ -85,6 +88,7 @@ test-suite dry-test
   build-depends:
       aeson
     , base >=4.7 && <5
+    , containers
     , directory
     , dry
     , edit-distance

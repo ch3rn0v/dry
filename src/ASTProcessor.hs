@@ -12,23 +12,33 @@ Parses AST that is output by semantic library
 module ASTProcessor
     ( parseRawJSONFile
     , FunctionData
+    , StatementsData
     , StatementsCountMap
     , filePath
     , lineNumber
     , name
     , arity
-    , stmtsCountMap
+    , stmtsData
     , stmtsCount
     )
 where
 
-import           Prelude                 hiding ( lookup )
-import           Data.HashMap.Strict            ( HashMap
+import qualified Data.IntMap.Strict            as IM
+                                                ( IntMap
                                                 , fromListWith
+                                                , map
+                                                , elems
+                                                )
+import qualified Data.HashMap.Strict           as HM
+                                                ( HashMap
+                                                , fromListWith
+                                                , keys
                                                 , lookup
                                                 , mapWithKey
                                                 )
-import           Data.Maybe                     ( isJust )
+import           Data.Maybe                     ( isJust
+                                                , fromJust
+                                                )
 import           Data.Either                    ( rights )
 import           Data.Text                      ( Text )
 import           Data.Text.Lazy                 ( pack )
@@ -37,7 +47,11 @@ import           Data.Aeson
 import           Data.Aeson.Types               ( Parser
                                                 , parseEither
                                                 )
-import           Data.Aeson.Lens
+import           Data.Aeson.Lens                ( _Object
+                                                , _String
+                                                , key
+                                                , nonNull
+                                                )
 import           Control.Lens                   ( cosmos
                                                 , filtered
                                                 , (^?)
@@ -48,20 +62,21 @@ import           StatementWeights               ( defaultWeight
                                                 , stmtWeights
                                                 )
 
-type StatementData = Text
+type DepthStatementData = (Int, [Text])
 
-type JSONParsingError = String
 type LineNumber = Int
 type Language = String
 type FunctionIdentifier = String
 type Arity = Int
-type StatementsCountMap = HashMap Text Double
+type StatementsCountMap = HM.HashMap Text Double
+type RawStatementsData = IM.IntMap [Text]
+type StatementsData = IM.IntMap StatementsCountMap
 data FunctionData = FunctionData { filePath :: FilePath
                                  , lineNumber :: LineNumber
                                  , language :: Language
                                  , name :: FunctionIdentifier
                                  , arity :: Arity
-                                 , stmtsCountMap :: StatementsCountMap
+                                 , stmtsData :: StatementsData
                                  , stmtsCount :: Int
                                  } deriving Show
 
@@ -73,9 +88,6 @@ data TreeData = TreeData { rootNode :: Value
 isKeyPresent :: Text -> Value -> Bool
 isKeyPresent keyName v = isJust $ v ^? (key keyName . nonNull)
 
-isStatement :: Value -> Bool
-isStatement = isKeyPresent "term"
-
 isTree :: Value -> Bool
 isTree = isKeyPresent "tree"
 
@@ -85,53 +97,76 @@ isFunction v = v ^? (key "term" . _String) == Just "Function"
 getAllElements :: (Value -> Bool) -> Value -> [Object]
 getAllElements filterFn = toListOf (cosmos . filtered filterFn . _Object)
 
-getAllStatements :: Value -> [Object]
-getAllStatements = getAllElements isStatement
-
 getAllFunctions :: Value -> [Object]
 getAllFunctions = getAllElements isFunction
 
 getAllTrees :: Value -> [Object]
 getAllTrees = getAllElements isTree
 
-isntStmtsWrapper :: StatementData -> Bool
-isntStmtsWrapper sd = sd /= "Statements" && sd /= "StatementBlock"
+-- | Recursively parses the given object and all its descendants,
+-- | building a list of (depth, [termName]) items.
+getAllStatements
+    :: Int
+    -> Object
+    -> Parser [DepthStatementData]
+    -> Parser [DepthStatementData]
+getAllStatements depth stmtNode parserSDs = do
+    (curTermName :: Maybe Text) <- stmtNode .:? "term"
+    let curTerm = [ (depth, [fromJust curTermName]) | isJust curTermName ]
 
-parseStmtObject :: Object -> Parser StatementData
-parseStmtObject o = o .: "term"
+    let nodeKeys = HM.keys stmtNode
+    let (innerNodes :: [Object]) =
+            rights $ map (parseEither (\k -> stmtNode .: k)) nodeKeys
+    let (innerNodeArrays :: [[Object]]) =
+            rights $ map (parseEither (\k -> stmtNode .: k)) nodeKeys
+    let allInnerNodes = innerNodes ++ concat innerNodeArrays
 
--- | Parses all statements, filtering out
--- | statement wrapper nodes.
-parseAllStatements :: [Value] -> [StatementData]
+    fmap concat
+        $ sequence
+        $ parserSDs
+        : return curTerm
+        : map
+              (\nodeObject ->
+                  getAllStatements (depth + 1) nodeObject $ return []
+              )
+              allInnerNodes
+
+parseAllStatements :: [Object] -> [DepthStatementData]
 parseAllStatements =
-    filter isntStmtsWrapper . rights . map (parseEither parseStmtObject) . concatMap getAllStatements
+    concat . rights . map (parseEither (\n -> getAllStatements 1 n $ return []))
 
-buildStatementsHashMap :: [StatementData] -> StatementsCountMap
-buildStatementsHashMap = fromListWith (+) . map (, 1)
+buildStatementsHashMap :: [Text] -> StatementsCountMap
+buildStatementsHashMap = HM.fromListWith (+) . map (, 1)
 
 multiplyHashMapByWeights :: StatementsCountMap -> StatementsCountMap
-multiplyHashMapByWeights = mapWithKey (\k v -> maybe (v * defaultWeight) (v *) $ lookup k stmtWeights)
+multiplyHashMapByWeights = HM.mapWithKey
+    (\k v -> maybe (v * defaultWeight) (v *) $ HM.lookup k stmtWeights)
 
 parseFunctionObject :: FilePath -> Language -> Object -> Parser FunctionData
 parseFunctionObject path language o = do
-    sourceSpan                   <- o .: "sourceSpan"
-    [lineNumber, _]              <- sourceSpan .: "start"
-    functionName                 <- o .: "functionName"
-    name                         <- functionName .: "name"
-    (parameters :: [Value])      <- o .: "functionParameters"
-    body                         <- o .: "functionBody"
-    (outerStatements :: [Value]) <- body .: "statements"
+    sourceSpan                    <- o .: "sourceSpan"
+    [lineNumber, _]               <- sourceSpan .: "start"
+    functionName                  <- o .: "functionName"
+    name                          <- functionName .: "name"
+    (parameters :: [Value])       <- o .: "functionParameters"
+    body                          <- o .: "functionBody"
+    (outerStatements :: [Object]) <- body .: "statements"
 
-    let allStatements = parseAllStatements outerStatements
-    let weightedStatements = multiplyHashMapByWeights $ buildStatementsHashMap allStatements
+    let (allStatements :: [DepthStatementData]) =
+            parseAllStatements outerStatements
+    let (statementsDepthMap :: RawStatementsData) =
+            IM.fromListWith (++) allStatements
+    let (weightedStatementsData :: StatementsData) = IM.map
+            (multiplyHashMapByWeights . buildStatementsHashMap)
+            statementsDepthMap
 
     return $ FunctionData path
                           lineNumber
                           language
                           name
                           (length parameters)
-                          weightedStatements
-                          (length allStatements)
+                          weightedStatementsData
+                          (length $ concat $ IM.elems statementsDepthMap)
 
 parseTreeFunctions :: TreeData -> [Either String FunctionData]
 parseTreeFunctions (TreeData rootNode treeFilePath treeLanguage) = map
@@ -152,7 +187,7 @@ parseRawJSONFile :: RawJSONFile -> Either String [FunctionData]
 parseRawJSONFile (RawJSONFile _ contents) =
     let decodedJSON = eitherDecode $ encodeUtf8 $ pack contents
     in  case decodedJSON of
-            (Left error) -> Left error
+            (Left errorMessage) -> Left errorMessage
             (Right rootNode) ->
                 Right
                     $ rights

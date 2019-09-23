@@ -3,7 +3,7 @@ version: 0.1.0.0
 github: "ch3rn0v/dry"
 license: BSD3
 author: "Ilya Chernov"
-maintainer: " ilya.v.chernov@gmail.com"
+maintainer: "ilya.v.chernov@gmail.com"
 copyright: "2019 Ilya Chernov"
 
 extra-source-files:
@@ -22,6 +22,7 @@ dependencies:
   - base >= 4.7 && < 5
   - directory
   - unordered-containers >= 0.2.10.0
+  - containers
   - path
   - path-io
   - uniplate

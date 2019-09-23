@@ -11,8 +11,12 @@ where
 
 import           Data.Ord                       ( Down(Down) )
 import           Data.List                      ( sortOn )
-import           Data.HashMap.Strict            ( HashMap
+import qualified Data.IntMap.Strict            as IM
+                                                ( intersectionWithKey
                                                 , elems
+                                                , keys
+                                                )
+import           Data.HashMap.Strict            ( elems
                                                 , intersectionWith
                                                 , difference
                                                 )
@@ -26,7 +30,7 @@ import           ASTProcessor                   ( FunctionData
                                                 , lineNumber
                                                 , name
                                                 , arity
-                                                , stmtsCountMap
+                                                , stmtsData
                                                 , stmtsCount
                                                 )
 import           Helpers                        ( avgDoubles
@@ -91,19 +95,33 @@ calculateUniqueStmtsSim m1 m2 =
         - sumAllUniqueElems m1 m2
         / sumAllElems [m1, m2]
   where
-    sumElems = sum . elems
-    sumUniqueElems   = sumElems . uncurry difference
+    sumElems       = sum . elems
+    sumUniqueElems = sumElems . uncurry difference
     sumAllUniqueElems a b = sumUniqueElems (a, b) + sumUniqueElems (b, a)
     sumAllElems = sum . map sumElems
 
 -- | Calculates functions' similarity score, based on the number of occurrences
--- | of statements in the functions' tree.
-fnsStmtsCountsDiff :: FunctionData -> FunctionData -> Double
-fnsStmtsCountsDiff f1 f2 =
+-- | of statements in the functions' tree (at the same depth level).
+fnsStmtsCountsDiff :: StatementsCountMap -> StatementsCountMap -> Double
+fnsStmtsCountsDiff m1 m2 =
     (calculateSharedStmtsSim m1 m2 + calculateUniqueStmtsSim m1 m2) / 2
+
+oneOverDepthFractionsSum :: [Int] -> Double
+oneOverDepthFractionsSum = sum . map ((1 /) . intToDouble)
+
+fnsStmtsDataDiff :: FunctionData -> FunctionData -> Double
+fnsStmtsDataDiff f1 f2 = sum (IM.elems stmtsCountsDiffMap)
+    / oneOverDepthFractionsSum deepestKeys
   where
-    m1 = stmtsCountMap f1
-    m2 = stmtsCountMap f2
+    sd1                = stmtsData f1
+    sd2                = stmtsData f2
+    stmtsCountsDiffMap = IM.intersectionWithKey
+        (\depth scm1 scm2 -> fnsStmtsCountsDiff scm1 scm2 / intToDouble depth)
+        sd1
+        sd2
+    deepestKeys = if length (IM.keys sd1) > length (IM.keys sd2)
+        then IM.keys sd1
+        else IM.keys sd2
 
 -- | Calculates similarity scores along every axis for every pair of functions
 -- | that are compared. Returns FunctionPairRawSimilarity that stores the diffs
@@ -115,7 +133,7 @@ estimateRawFunctionSimilarity (f1, f2) = FunctionPairRawSimilarity
     f2
     (fnsLevenshteinDistance f1 f2)
     (fnsArityDiff f1 f2)
-    (fnsStmtsCountsDiff f1 f2)
+    (fnsStmtsDataDiff f1 f2)
     (fnsStmtsCountDiff f1 f2)
 
 -- | Calculates compound diff value given the raw diff values.

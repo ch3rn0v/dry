@@ -4,8 +4,6 @@ module Main where
 
 import           System.Environment             ( getArgs )
 import           Lib                            ( analyseJSONAst )
-import           Analyser                       ( functionPairSimilarityDataToCsv
-                                                )
 
 main :: IO ()
 main = do
@@ -21,7 +19,7 @@ main = do
             in  do
                     analysisResult <- analyseJSONAst pathToRead
                     case analysisResult of
-                        (Left error) -> putStrLn error
+                        (Left errorMessage) -> putStrLn errorMessage
                         (Right analysisResultCSV) ->
                             writeFile pathToWrite analysisResultCSV
 
