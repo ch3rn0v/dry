@@ -188,18 +188,22 @@ functionPairSimilarityDataToCsv :: [FunctionPairCompoundSimilarity] -> CSV
 functionPairSimilarityDataToCsv =
     unlines
         . (:)
-              "Fn1 identifier,Fn1 file path,\
-              \Fn2 identifier,Fn2 file path,\
-              \Similarity score"
+              "Fn1 Identifier,Fn1 Statements Count,Fn1 File Path,\
+              \Fn2 Identifier,Fn2 Statements Count,Fn2 File Path,\
+              \Similarity Score"
         . map
               (\(FunctionPairCompoundSimilarity f1 f2 sim) ->
                   name f1
+                      ++ ","
+                      ++ show (stmtsCount f1)
                       ++ ","
                       ++ filePath f1
                       ++ ":"
                       ++ show (lineNumber f1)
                       ++ ","
                       ++ name f2
+                      ++ ","
+                      ++ show (stmtsCount f2)
                       ++ ","
                       ++ filePath f2
                       ++ ":"
