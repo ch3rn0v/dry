@@ -31,6 +31,10 @@ Instead of `stack build` followed by `stack exec` you can use `stack run`, like 
 
 `stack run dry-exe "/Users/**/dev/parsed.json" "/Users/**/dev/analysis/results.csv"`
 
+# Example of DRY output's visualization
+
+![DRY output's visualization](https://i.imgur.com/EQSUkwh.png)
+
 # Acknowledgements
 
 This tool wouldn't have been possible without awesome Haskell community,
