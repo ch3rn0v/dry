@@ -36,6 +36,8 @@ Instead of `stack build` followed by `stack exec` you can use `stack run`, like 
 ![DRY output's visualization](https://i.imgur.com/sSBulR8.png)
 ![DRY output's visualization](https://i.imgur.com/EQSUkwh.png)
 
+[Source code for visualizations](https://github.com/ch3rn0v/dry-viz/blob/master/Function%20Similarity%20Analysis.ipynb)
+
 # Acknowledgements
 
 This tool wouldn't have been possible without awesome Haskell community,
