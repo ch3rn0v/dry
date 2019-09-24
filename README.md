@@ -33,6 +33,7 @@ Instead of `stack build` followed by `stack exec` you can use `stack run`, like 
 
 # Example of DRY output's visualization
 
+![DRY output's visualization](https://i.imgur.com/sSBulR8.png)
 ![DRY output's visualization](https://i.imgur.com/EQSUkwh.png)
 
 # Acknowledgements
