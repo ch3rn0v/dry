@@ -28,9 +28,10 @@ intToAbsDouble = realToFrac . abs
 
 -- | Returns 1 if both args are zero, returns 0 if only one arg is zero,
 -- | otherwise divides the lesser int over the greater one.
+-- | Args must be non-negative.
 divLesserOverGreater :: Real a => a -> a -> Double
 divLesserOverGreater a b | a == 0 && b == 0 = 1
-                         | a == 0 || b == 0 = 0
+                         | a < 0 || b < 0 = undefined
                          | a < b = intToAbsDouble a / intToAbsDouble b
                          | otherwise = intToAbsDouble b / intToAbsDouble a
 

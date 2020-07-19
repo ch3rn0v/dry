@@ -64,16 +64,12 @@ fnsLevenshteinDistance f1 f2 = 1 / (1 + intToDouble ld)
     where ld = levenshteinDistance defaultEditCosts (name f1) (name f2)
 
 -- | Returns the division of the lesser arity over the greater one,
--- | except two cases:
--- | - returns 1 if both are zero,
--- | - returns 0 if only one is zero.
+-- | with one exception: returns 1 if both are zero.
 fnsArityDiff :: FunctionData -> FunctionData -> Double
 fnsArityDiff f1 f2 = divLesserOverGreater (arity f1) (arity f2)
 
 -- | Returns the division of the lesser count of statements over the greater one,
--- | except two cases:
--- | - returns 1 if both are zero,
--- | - returns 0 if only one is zero.
+-- | with one exception: returns 1 if both are zero.
 fnsStmtsCountDiff :: FunctionData -> FunctionData -> Double
 fnsStmtsCountDiff f1 f2 = divLesserOverGreater (stmtsCount f1) (stmtsCount f2)
 
