@@ -8,7 +8,7 @@ The tool makes use of [Semantic](https://github.com/github/semantic)'s json outp
 
 It supports all the languages that Semantic [supports](https://github.com/github/semantic#language-support)
 
-# How to build AST in json
+# How to Build AST in JSON
 
 Before one can run DRY, it's required to first have an AST to analyze.
 DRY expects one in particular json format, the one that Semantic outputs.
@@ -23,22 +23,22 @@ docker run -v /root/path/to/a/project:/r --entrypoint sh semantic -c "/usr/local
 
 Where:
 
-`/root/path/to/a/project` is the root path to the directory of the project one wants to analyze.
-`/r` is its root path within Docker's container.
-`find /r/internal/path -name *.js` is the command to find _all_ files that have extension ".js" and reside in `/root/path/to/a/project/internal/path`.
+- `/root/path/to/a/project` is the root path to the directory of the project one wants to analyze.
+- `/r` is its root path within Docker's container.
+- `find /r/internal/path -name *.js` is the command to find _all_ files that have extension ".js" and reside in `/root/path/to/a/project/internal/path`.
 Notice that the command is wrapped in escaped backticks. Sematic accepts a list of filepaths to be parsed as an argument. `find` returns them, and backticks are required in order to pass `find`'s output as an argument to `semantic`. Finally, the backticks have to be escaped in order to make the command run within Docker's container (as opposed to the shell where the whole `docker run ...` command is invoked).
 
 Alternatively, one can provide the root path to a source file to be analyzed, or a number of them. `find` is only used to enumerate them automatically.
 
-# How To Build
+# How to Build DRY
 
 1. `git clone https://github.com/ch3rn0v/dry.git`
 2. `cd dry`
 3. `stack build`
 
-# How To Execute
+# How to Execute DRY
 
-1. `stack exec dry-exe <path_to_the_json_file> <path_to_the_output_csv_file>`
+`stack exec dry-exe <path_to_the_json_file> <path_to_the_output_csv_file>`
 
 Where:
 
@@ -53,7 +53,7 @@ Instead of `stack build` followed by `stack exec` you can use `stack run`, like 
 
 `stack run dry-exe "/Users/**/dev/parsed.json" "/Users/**/dev/analysis/results.csv"`
 
-# Example of DRY output's visualization
+# Example of DRY Output's Visualization
 
 ![DRY output's visualization](https://i.imgur.com/sSBulR8.png)
 ![DRY output's visualization](https://i.imgur.com/EQSUkwh.png)
@@ -62,9 +62,9 @@ Instead of `stack build` followed by `stack exec` you can use `stack run`, like 
 
 # Acknowledgements
 
-This tool wouldn't have been possible without awesome Haskell community,
+- This tool wouldn't have been possible without awesome Haskell community,
 [@haskellru](https://t.me/haskellru) in particular.
-[Semantic](https://github.com/github/semantic)'s staff members helped a lot to run their tool.
-And a great thank you to @python273 who sped up the process by helping with Docker.
+- [Semantic](https://github.com/github/semantic)'s staff members helped a lot to run their tool.
+- And a great thank you to [@python273](https://github.com/python273) who sped up the process by helping with Docker.
 
 You can find the list of libraries used in package.yaml
