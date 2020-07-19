@@ -8,6 +8,28 @@ The tool makes use of [Semantic](https://github.com/github/semantic)'s json outp
 
 It supports all the languages that Semantic [supports](https://github.com/github/semantic#language-support)
 
+# How to build AST in json
+
+Before one can run DRY, it's required to first have an AST to analyze.
+DRY expects one in particular json format, the one that Semantic outputs.
+
+1. Pull [Semantic](https://github.com/github/semantic/packages/11609)'s container.
+
+2. Run it, passing a command like this:
+
+```
+docker run -v /root/path/to/a/project:/r --entrypoint sh semantic -c "/usr/local/bin/semantic -- parse --json \`find /r/internal/path -name *.js\`" | tail -n 1 > ~/Desktop/output.json`
+```
+
+Where:
+
+`/root/path/to/a/project` is the root path to the directory of the project one wants to analyze.
+`/r` is its root path within Docker's container.
+`find /r/internal/path -name *.js` is the command to find _all_ files that have extension ".js" and reside in `/root/path/to/a/project/internal/path`.
+Notice that the command is wrapped in escaped backticks. Sematic accepts a list of filepaths to be parsed as an argument. `find` returns them, and backticks are required in order to pass `find`'s output as an argument to `semantic`. Finally, the backticks have to be escaped in order to make the command run within Docker's container (as opposed to the shell where the whole `docker run ...` command is invoked).
+
+Alternatively, one can provide the root path to a source file to be analyzed, or a number of them. `find` is only used to enumerate them automatically.
+
 # How To Build
 
 1. `git clone https://github.com/ch3rn0v/dry.git`
@@ -42,5 +64,7 @@ Instead of `stack build` followed by `stack exec` you can use `stack run`, like 
 
 This tool wouldn't have been possible without awesome Haskell community,
 [@haskellru](https://t.me/haskellru) in particular.
+[Semantic](https://github.com/github/semantic)'s staff members helped a lot to run their tool.
+And a great thank you to @python273 who sped up the process by helping with Docker.
 
 You can find the list of libraries used in package.yaml
