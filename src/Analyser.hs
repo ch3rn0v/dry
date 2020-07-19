@@ -58,9 +58,9 @@ instance Ord FunctionPairCompoundSimilarity where
     (<=) (FunctionPairCompoundSimilarity _ _ s1) (FunctionPairCompoundSimilarity _ _ s2)
         = s1 <= s2
 
--- | Calculates Levenshein's distance between the functions' identifiers.
+-- | Calculates Levenshtein's distance between the functions' identifiers.
 fnsLevenshteinDistance :: FunctionData -> FunctionData -> Double
-fnsLevenshteinDistance f1 f2 = if ld == 0 then 1 else 1 / intToDouble ld
+fnsLevenshteinDistance f1 f2 = 1 / (1 + intToDouble ld)
     where ld = levenshteinDistance defaultEditCosts (name f1) (name f2)
 
 -- | Returns the division of the lesser arity over the greater one,
